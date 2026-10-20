@@ -1,0 +1,25 @@
+<!-- sqz-rules (auto-installed by sqz init) -->
+
+## sqz
+
+Pipe shell commands with long output (git log or diff, tests, builds,
+`ls -la`) through sqz:
+
+```bash
+git status 2>&1 | sqz compress
+```
+
+Don't pipe interactive commands (REPLs, `ssh`), chains with `&&`, `||`
+or `;`, output redirected to a file, or short output. If that binary is
+missing, run commands without it.
+
+When the sqz MCP tools are available, prefer `sqz_read_file`, `sqz_grep`
+and `sqz_list_dir` over the built-in read, grep and `ls` for long or
+repeated reads, and use `sqz_recall` to find output seen earlier.
+
+A `§ref:HASH§` stands in for output you have already seen, and
+`§ref:HASH:L40-80§` for lines 40-80 of it. Get the text back with the
+`expand` tool or `sqz expand <token>`. `«A1»` stands for the
+phrase listed for it under `[Abbreviations]` at the top of the output.
+For output without refs or abbreviations, put `SQZ_NO_DEDUP=1` or
+`SQZ_NO_ABBREV=1` right before `sqz compress`.

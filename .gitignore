@@ -1,0 +1,15 @@
+# Build artifacts
+*.apk
+*.apk.idsig
+*.dex
+*.zip
+aligned.apk
+base.apk
+classes.dex
+compiled_res.zip
+vato-proxy
+obj/
+build/
+target/
+*.keystore
+debug.keystore

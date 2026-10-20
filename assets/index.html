@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Vato</title>
+    <style>
+        @font-face {
+            font-family: 'JetBrainsMonoNL Nerd Font';
+            src: url('fonts/JetBrainsMonoNLNerdFont-Regular.ttf') format('truetype');
+            font-weight: 100 900;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'JetBrains Mono NL';
+            src: url('fonts/JetBrainsMonoNLNerdFont-Regular.ttf') format('truetype');
+            font-weight: 100 900;
+            font-style: normal;
+            font-display: swap;
+        }
+        :root {
+            --bg-color: #0b141a;
+            --header-bg: #1f2c34;
+            --footer-bg: #1f2c34;
+            --input-bg: #2a3942;
+            --text-primary: #e9edef;
+            --text-secondary: #8696a0;
+            --user-bubble: #005c4b;
+            --bot-bubble: #202c33;
+            --accent-green: #00a884;
+            --whatsapp-blue: #53bdeb;
+            --code-bg: #111b21;
+            --border-color: #222d34;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+            font-family: 'JetBrainsMonoNL Nerd Font', 'JetBrains Mono NL', monospace;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+        }
+        input, textarea, button, select, .bubble-content, .message-input, .contact-name, .contact-status {
+            font-family: 'JetBrainsMonoNL Nerd Font', 'JetBrains Mono NL', monospace !important;
+        }
+
+        #app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            height: 100dvh;
+            width: 100%;
+            position: relative;
+        }
+
+        /* Top Header */
+        header {
+            height: 60px;
+            background-color: var(--header-bg);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            z-index: 10;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+            flex-shrink: 0;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .avatar-wrap {
+            position: relative;
+            width: 42px;
+            height: 42px;
+            flex-shrink: 0;
+        }
+
+        .avatar {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00a884, #128c7e);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 19px;
+            letter-spacing: 0.5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+        }
+
+        .online-dot {
+            position: absolute;
+            bottom: 1px;
+            right: 1px;
+            width: 11px;
+            height: 11px;
+            background-color: #00d95a;
+            border: 2px solid var(--header-bg);
+            border-radius: 50%;
+            transition: background-color 0.3s;
+        }
+
+        .contact-info {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .contact-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .contact-status {
+            font-size: 12px;
+            color: var(--accent-green);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transition: color 0.2s;
+        }
+
+        .contact-status.typing {
+            color: #25d366;
+            font-weight: 500;
+        }
+
+        .contact-status.offline {
+            color: #ef5350;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .icon-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .icon-btn:active {
+            background-color: rgba(255,255,255,0.1);
+            color: var(--text-primary);
+        }
+
+        .icon-btn svg {
+            width: 21px;
+            height: 21px;
+            fill: currentColor;
+        }
+
+        /* Chat Wallpaper & Container */
+        #chat-container {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(255, 255, 255, 0.02) 0%, transparent 8%),
+                radial-gradient(circle at 90% 80%, rgba(255, 255, 255, 0.02) 0%, transparent 8%),
+                radial-gradient(#182229 1.2px, transparent 1.2px);
+            background-size: 100% 100%, 100% 100%, 24px 24px;
+            scroll-behavior: smooth;
+        }
+
+        .date-pill {
+            align-self: center;
+            background-color: #182229;
+            color: var(--text-secondary);
+            font-size: 11px;
+            font-weight: 500;
+            padding: 5px 12px;
+            border-radius: 8px;
+            margin: 4px 0 8px 0;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Message Bubbles */
+        .message-row {
+            display: flex;
+            width: 100%;
+            animation: fadeIn 0.18s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message-row.user {
+            justify-content: flex-end;
+        }
+
+        .message-row.assistant {
+            justify-content: flex-start;
+        }
+
+        .bubble {
+            max-width: 84%;
+            padding: 8px 10px 6px 10px;
+            border-radius: 10px;
+            position: relative;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.35);
+            word-wrap: break-word;
+            word-break: break-word;
+            line-height: 1.44;
+            font-size: 14.5px;
+        }
+
+        .message-row.user .bubble {
+            background-color: var(--user-bubble);
+            color: var(--text-primary);
+            border-top-right-radius: 2px;
+        }
+
+        .message-row.assistant .bubble {
+            background-color: var(--bot-bubble);
+            color: var(--text-primary);
+            border-top-left-radius: 2px;
+        }
+
+        .bubble-image-wrap {
+            margin-bottom: 6px;
+            border-radius: 6px;
+            overflow: hidden;
+            background-color: rgba(0,0,0,0.2);
+        }
+
+        .bubble-image-wrap img {
+            display: block;
+            max-width: 100%;
+            max-height: 280px;
+            border-radius: 6px;
+            object-fit: cover;
+        }
+
+        .bubble-content {
+            white-space: pre-wrap;
+        }
+
+        .bubble-content code {
+            font-family: 'JetBrainsMonoNL Nerd Font', 'JetBrains Mono NL', ui-monospace, monospace;
+            background-color: var(--code-bg);
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .bubble-content pre {
+            background-color: var(--code-bg);
+            padding: 8px 10px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 6px 0;
+            border: 1px solid rgba(255,255,255,0.06);
+            font-family: 'JetBrainsMonoNL Nerd Font', 'JetBrains Mono NL', ui-monospace, monospace;
+        }
+
+        .bubble-content pre code {
+            font-family: inherit;
+            background: none;
+            padding: 0;
+        }
+        .bubble-content a {
+            color: var(--whatsapp-blue);
+            text-decoration: underline;
+            word-break: break-all;
+        }
+        .bubble-content strong {
+            font-weight: 600;
+        }
+        .bubble-content blockquote {
+            border-left: 3px solid var(--accent-green);
+            margin: 4px 0;
+            padding-left: 8px;
+            opacity: 0.85;
+        }
+
+        .bubble-meta {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 4px;
+            font-size: 10.5px;
+            color: var(--text-secondary);
+            margin-top: 3px;
+            user-select: none;
+        }
+
+        .checkmarks {
+            color: var(--whatsapp-blue);
+            font-size: 13px;
+            line-height: 1;
+            font-weight: bold;
+        }
+
+        /* Typing Dots */
+        .typing-bubble {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 12px 16px;
+            background-color: var(--bot-bubble);
+            border-radius: 12px;
+            border-top-left-radius: 2px;
+            width: fit-content;
+        }
+
+        .typing-dot {
+            width: 7px;
+            height: 7px;
+            background-color: var(--accent-green);
+            border-radius: 50%;
+            opacity: 0.5;
+            animation: bounce 1.2s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes bounce {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.35; }
+            30% { transform: translateY(-5px); opacity: 1; }
+        }
+
+        /* Attachment Preview */
+        #image-preview-tray {
+            display: none;
+            background-color: var(--header-bg);
+            padding: 8px 12px;
+            border-top: 1px solid var(--border-color);
+            position: relative;
+            align-items: center;
+            gap: 12px;
+        }
+
+        #image-preview-tray.show {
+            display: flex;
+        }
+
+        .preview-thumb-wrap {
+            position: relative;
+            width: 56px;
+            height: 56px;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.15);
+            flex-shrink: 0;
+        }
+
+        .preview-thumb-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .preview-remove-btn {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: rgba(0,0,0,0.75);
+            color: white;
+            border: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .preview-info {
+            flex: 1;
+            font-size: 13px;
+            color: var(--text-secondary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Bottom Input Bar */
+        footer {
+            background-color: transparent;
+            padding: 6px 8px 10px 8px;
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        .input-pill {
+            flex: 1;
+            background-color: var(--input-bg);
+            border-radius: 24px;
+            display: flex;
+            align-items: flex-end;
+            padding: 3px 6px 3px 12px;
+            min-height: 48px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+
+        .input-pill textarea {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-size: 15.5px;
+            line-height: 20px;
+            max-height: 120px;
+            padding: 11px 4px 11px 0;
+            resize: none;
+            outline: none;
+        }
+
+        .input-pill textarea::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .pill-attach-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            padding: 10px;
+            margin-bottom: 2px;
+            cursor: pointer;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pill-attach-btn:active {
+            color: var(--text-primary);
+        }
+
+        .pill-attach-btn svg {
+            width: 22px;
+            height: 22px;
+            fill: currentColor;
+        }
+
+        .send-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background-color: var(--accent-green);
+            color: white;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.35);
+            transition: transform 0.1s, background-color 0.15s;
+        }
+
+        .send-btn:active {
+            transform: scale(0.93);
+            background-color: #008f6f;
+        }
+
+        .send-btn svg {
+            width: 22px;
+            height: 22px;
+            fill: currentColor;
+            margin-left: 2px;
+        }
+
+        /* Settings Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: fadeIn 0.2s;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal-box {
+            background-color: var(--header-bg);
+            border-radius: 14px;
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent-green);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-input, .form-textarea {
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 12px;
+            color: var(--text-primary);
+            font-size: 14px;
+            outline: none;
+        }
+
+        .form-input:focus, .form-textarea:focus {
+            border-color: var(--accent-green);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 70px;
+        }
+
+        .quick-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 4px;
+        }
+
+        .chip {
+            background-color: #182229;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 11px;
+            padding: 5px 10px;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+
+        .chip:active {
+            background-color: var(--accent-green);
+            color: white;
+        }
+
+        .status-msg {
+            font-size: 12px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            display: none;
+        }
+
+        .status-msg.success {
+            display: block;
+            background-color: rgba(0, 168, 132, 0.2);
+            color: #25d366;
+            border: 1px solid rgba(0, 168, 132, 0.4);
+        }
+
+        .status-msg.error {
+            display: block;
+            background-color: rgba(239, 83, 80, 0.2);
+            color: #ef5350;
+            border: 1px solid rgba(239, 83, 80, 0.4);
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 6px;
+        }
+
+        .btn {
+            padding: 9px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-secondary {
+            background-color: #2a3942;
+            color: var(--text-primary);
+        }
+
+        .btn-primary {
+            background-color: var(--accent-green);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Top Header -->
+        <header>
+            <div class="header-left">
+                <div class="avatar-wrap">
+                    <div class="avatar">V</div>
+                    <div class="online-dot" id="onlineDot"></div>
+                </div>
+                <div class="contact-info">
+                    <div class="contact-name">Vato</div>
+                    <div class="contact-status" id="headerStatus">online</div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="icon-btn" id="updateAppBtn" title="Download Latest APK">
+                    <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+                </button>
+                <button class="icon-btn" id="clearChatBtn" title="Clear Chat">
+                    <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                </button>
+                <button class="icon-btn" id="settingsBtn" title="Settings">
+                    <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Chat Area -->
+        <div id="chat-container">
+            <div class="date-pill">Today</div>
+        </div>
+
+        <!-- Attachment Preview Strip -->
+        <div id="image-preview-tray">
+            <div class="preview-thumb-wrap">
+                <img id="previewImg" src="" alt="preview">
+                <button class="preview-remove-btn" id="removeImageBtn">✕</button>
+            </div>
+            <div class="preview-info" id="previewFileName">Image attached</div>
+        </div>
+
+        <!-- Bottom Input Bar -->
+        <footer>
+            <input type="file" id="fileInput" accept="image/*" style="display: none;">
+            <div class="input-pill">
+                <button class="pill-attach-btn" id="attachBtn" title="Attach Image">
+                    <svg viewBox="0 0 24 24"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5a2.5 2.5 0 0 1 5 0v10.5c0 .83-.67 1.5-1.5 1.5s-1.5-.67-1.5-1.5V6H9v9.5a3 3 0 0 0 6 0V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/></svg>
+                </button>
+                <textarea id="messageInput" placeholder="Message" rows="1"></textarea>
+            </div>
+            <button class="send-btn" id="sendBtn" title="Send">
+                <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            </button>
+        </footer>
+
+        <!-- Settings Modal -->
+        <div class="modal-overlay" id="settingsModal">
+            <div class="modal-box">
+                <div class="modal-title">Settings</div>
+                
+                <div class="form-group">
+                    <label class="form-label">Server Endpoint</label>
+                    <input type="text" class="form-input" id="serverUrlInput" placeholder="http://127.0.0.1:8080">
+                    <div class="quick-chips">
+                        <span class="chip" onclick="setServerUrl('http://127.0.0.1:8080')">Localhost (8080)</span>
+                        <span class="chip" onclick="setServerUrl('http://10.0.2.2:8080')">Emulator (10.0.2.2:8080)</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">System Prompt (Short Updates)</label>
+                    <textarea class="form-textarea" id="systemPromptInput" rows="3"></textarea>
+                </div>
+
+                <div id="testStatusMsg" class="status-msg"></div>
+
+                <div class="form-group" style="border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 4px;">
+                    <label class="form-label">App Updates</label>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 13px; color: var(--text-secondary);">Version 1.1.0</span>
+                        <button type="button" class="btn btn-secondary" id="downloadApkBtn" style="font-size: 12px; padding: 6px 12px; color: var(--accent-green);">⬇️ Download Latest APK</button>
+                    </div>
+                </div>
+
+                <div class="modal-buttons">
+                    <button class="btn btn-secondary" id="testConnBtn">Test</button>
+                    <button class="btn btn-secondary" id="cancelSettingsBtn">Close</button>
+                    <button class="btn btn-primary" id="saveSettingsBtn">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const DEFAULT_SERVER = "http://127.0.0.1:8080";
+        const DEFAULT_SYSTEM = "You are Vato, a direct and concise assistant on WhatsApp with live internet access. Keep all replies short, crisp, and to the point like a quick project status update or brief WhatsApp chat message. No unnecessary filler, introductions, or pleasantries.";
+
+        let serverUrl = localStorage.getItem("vato_server_url") || DEFAULT_SERVER;
+        let systemPrompt = localStorage.getItem("vato_system_prompt") || DEFAULT_SYSTEM;
+        let attachedImageBase64 = null;
+        let attachedImageName = "";
+        let chatMessages = [];
+        let isGenerating = false;
+
+        // Elements
+        const chatContainer = document.getElementById("chat-container");
+        const messageInput = document.getElementById("messageInput");
+        const fileInput = document.getElementById("fileInput");
+        const attachBtn = document.getElementById("attachBtn");
+        const sendBtn = document.getElementById("sendBtn");
+        const imagePreviewTray = document.getElementById("image-preview-tray");
+        const previewImg = document.getElementById("previewImg");
+        const previewFileName = document.getElementById("previewFileName");
+        const removeImageBtn = document.getElementById("removeImageBtn");
+        const headerStatus = document.getElementById("headerStatus");
+        const onlineDot = document.getElementById("onlineDot");
+        const settingsBtn = document.getElementById("settingsBtn");
+        const clearChatBtn = document.getElementById("clearChatBtn");
+        const settingsModal = document.getElementById("settingsModal");
+        const serverUrlInput = document.getElementById("serverUrlInput");
+        const systemPromptInput = document.getElementById("systemPromptInput");
+        const testConnBtn = document.getElementById("testConnBtn");
+        const saveSettingsBtn = document.getElementById("saveSettingsBtn");
+        const cancelSettingsBtn = document.getElementById("cancelSettingsBtn");
+        const testStatusMsg = document.getElementById("testStatusMsg");
+
+        function vibrate(ms = 25) {
+            try {
+                if (navigator.vibrate) navigator.vibrate(ms);
+            } catch(e) {}
+        }
+
+        function formatTime(date) {
+            let hours = date.getHours();
+            let minutes = date.getMinutes();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            minutes = minutes < 10 ? '0' + minutes : minutes;
+            return hours + ':' + minutes + ' ' + ampm;
+        }
+
+        // Auto-resize textarea
+        messageInput.addEventListener("input", function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+
+        // Keydown handler
+        messageInput.addEventListener("keydown", function(e) {
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        function loadChatHistory() {
+            const saved = localStorage.getItem("vato_chat_history");
+            if (saved) {
+                try {
+                    chatMessages = JSON.parse(saved);
+                    renderAllMessages();
+                    return;
+                } catch(e) {}
+            }
+            chatMessages = [{
+                role: "assistant",
+                content: "Hey! Ready for short updates and questions. Type a message or attach an image below.",
+                time: formatTime(new Date())
+            }];
+            saveChatHistory();
+            renderAllMessages();
+        }
+
+        function saveChatHistory() {
+            localStorage.setItem("vato_chat_history", JSON.stringify(chatMessages.slice(-50)));
+        }
+
+        function renderAllMessages() {
+            chatContainer.innerHTML = '<div class="date-pill">Today</div>';
+            chatMessages.forEach(msg => appendMessageUI(msg, false));
+            scrollToBottom();
+        }
+
+        function renderMarkdown(raw) {
+            if (!raw) return "";
+            let text = raw
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+
+            const codeBlocks = [];
+            text = text.replace(/```([a-zA-Z0-9_\-\.]*)\n?([\s\S]*?)```/g, (match, lang, code) => {
+                const id = `\u0000CODE${codeBlocks.length}\u0000`;
+                codeBlocks.push(`<pre><code>${code.trim()}</code></pre>`);
+                return id;
+            });
+
+            text = text.replace(/`([^`\n]+)`/g, (match, code) => {
+                const id = `\u0000CODE${codeBlocks.length}\u0000`;
+                codeBlocks.push(`<code>${code}</code>`);
+                return id;
+            });
+
+            text = text.replace(/^&gt;\s?(.*$)/gim, "<blockquote>$1</blockquote>");
+            text = text.replace(/^### (.*$)/gim, "<strong>$1</strong>");
+            text = text.replace(/^## (.*$)/gim, '<div style="font-size:1.1em;font-weight:bold;margin:2px 0;">$1</div>');
+            text = text.replace(/^# (.*$)/gim, '<div style="font-size:1.2em;font-weight:bold;margin:4px 0;">$1</div>');
+
+            text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+            text = text.replace(/(^|[\s(])(https?:\/\/[^\s)<]+)/g, '$1<a href="$2" target="_blank">$2</a>');
+
+            text = text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+            text = text.replace(/(^|\s)\*([^\*\n]+)\*(\s|$|[.,!?])/g, "$1<strong>$2</strong>$3");
+            text = text.replace(/(^|\s)_([^_\n]+)_(\s|$|[.,!?])/g, "$1<em>$2</em>$3");
+            text = text.replace(/~~(.*?)~~/g, "<del>$1</del>");
+            text = text.replace(/(^|\s)~([^~\n]+)~(\s|$|[.,!?])/g, "$1<del>$2</del>$3");
+
+            text = text.replace(/^[•\-\*]\s+(.*$)/gim, "• $1");
+
+            codeBlocks.forEach((block, idx) => {
+                text = text.replace(`\u0000CODE${idx}\u0000`, block);
+            });
+
+            return text;
+        }
+
+        function appendMessageUI(msg, scroll = true) {
+            const row = document.createElement("div");
+            row.className = `message-row ${msg.role}`;
+
+            const bubble = document.createElement("div");
+            bubble.className = "bubble";
+
+            if (msg.image) {
+                const imgWrap = document.createElement("div");
+                imgWrap.className = "bubble-image-wrap";
+                const img = document.createElement("img");
+                img.src = msg.image;
+                imgWrap.appendChild(img);
+                bubble.appendChild(imgWrap);
+            }
+
+            if (msg.content) {
+                const textDiv = document.createElement("div");
+                textDiv.className = "bubble-content";
+                textDiv.innerHTML = renderMarkdown(msg.content);
+                bubble.appendChild(textDiv);
+            }
+
+            const meta = document.createElement("div");
+            meta.className = "bubble-meta";
+            meta.innerHTML = `<span>${msg.time || formatTime(new Date())}</span>` + 
+                (msg.role === 'user' ? '<span class="checkmarks">✓✓</span>' : '');
+            bubble.appendChild(meta);
+
+            row.appendChild(bubble);
+            chatContainer.appendChild(row);
+
+            if (scroll) scrollToBottom();
+        }
+
+        function showTypingIndicator() {
+            removeTypingIndicator();
+            headerStatus.textContent = "typing...";
+            headerStatus.className = "contact-status typing";
+
+            const row = document.createElement("div");
+            row.id = "typingIndicatorRow";
+            row.className = "message-row assistant";
+            row.innerHTML = `
+                <div class="typing-bubble">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            `;
+            chatContainer.appendChild(row);
+            scrollToBottom();
+        }
+
+        function removeTypingIndicator() {
+            const el = document.getElementById("typingIndicatorRow");
+            if (el) el.remove();
+            headerStatus.textContent = "online";
+            headerStatus.className = "contact-status";
+        }
+
+        function scrollToBottom() {
+            setTimeout(() => {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }, 10);
+        }
+
+        // Image compression helper
+        function resizeAndCompressImage(file, maxDimension = 1280, quality = 0.85) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onerror = reject;
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onerror = reject;
+                    img.onload = () => {
+                        let w = img.width;
+                        let h = img.height;
+                        if (w > maxDimension || h > maxDimension) {
+                            if (w > h) {
+                                h = Math.round((h * maxDimension) / w);
+                                w = maxDimension;
+                            } else {
+                                w = Math.round((w * maxDimension) / h);
+                                h = maxDimension;
+                            }
+                        }
+                        const canvas = document.createElement("canvas");
+                        canvas.width = w;
+                        canvas.height = h;
+                        const ctx = canvas.getContext("2d");
+                        ctx.drawImage(img, 0, 0, w, h);
+                        const compressedDataUrl = canvas.toDataURL("image/jpeg", quality);
+                        resolve(compressedDataUrl);
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Attach Image
+        attachBtn.addEventListener("click", () => fileInput.click());
+
+        fileInput.addEventListener("change", async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            attachedImageName = file.name;
+            try {
+                attachedImageBase64 = await resizeAndCompressImage(file);
+                previewImg.src = attachedImageBase64;
+                previewFileName.textContent = file.name;
+                imagePreviewTray.classList.add("show");
+            } catch (err) {
+                alert("Failed to process image: " + err.message);
+            }
+        });
+
+        removeImageBtn.addEventListener("click", () => {
+            attachedImageBase64 = null;
+            attachedImageName = "";
+            fileInput.value = "";
+            imagePreviewTray.classList.remove("show");
+        });
+
+        // Send Message
+        async function sendMessage() {
+            if (isGenerating) return;
+
+            const text = messageInput.value.trim();
+            const image = attachedImageBase64;
+
+            if (!text && !image) return;
+
+            vibrate(30);
+
+            // Reset inputs
+            messageInput.value = "";
+            messageInput.style.height = "auto";
+            attachedImageBase64 = null;
+            attachedImageName = "";
+            fileInput.value = "";
+            imagePreviewTray.classList.remove("show");
+
+            const userMsg = {
+                role: "user",
+                content: text,
+                image: image,
+                time: formatTime(new Date())
+            };
+
+            chatMessages.push(userMsg);
+            appendMessageUI(userMsg);
+            saveChatHistory();
+
+            // Prepare LLM request
+            isGenerating = true;
+            showTypingIndicator();
+
+            try {
+                const apiMessages = [
+                    { role: "system", content: systemPrompt }
+                ];
+
+                const recentHistory = chatMessages.slice(-10);
+                for (let i = 0; i < recentHistory.length; i++) {
+                    const m = recentHistory[i];
+                    if (m.role === "user") {
+                        if (m.image) {
+                            apiMessages.push({
+                                role: "user",
+                                content: [
+                                    { type: "text", text: m.content || "Describe or inspect this image." },
+                                    { type: "image_url", image_url: { url: m.image } }
+                                ]
+                            });
+                        } else {
+                            apiMessages.push({ role: "user", content: m.content });
+                        }
+                    } else if (m.role === "assistant") {
+                        apiMessages.push({ role: "assistant", content: m.content });
+                    }
+                }
+
+                const endpoint = serverUrl.replace(/\/+$/, '') + "/v1/chat/completions";
+                let response = null;
+                let fetchError = null;
+                for (let attempt = 0; attempt < 2; attempt++) {
+                    try {
+                        response = await fetch(endpoint, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                model: "qwen3.8-flash-next",
+                                messages: apiMessages,
+                                temperature: 0.7,
+                                max_tokens: 1024
+                            })
+                        });
+                        if (response.ok) break;
+                    } catch (e) {
+                        fetchError = e;
+                        if (attempt < 1) await new Promise(r => setTimeout(r, 1000));
+                    }
+                }
+
+                if (!response || !response.ok) {
+                    throw fetchError || new Error(`Server returned HTTP ${response ? response.status : 'error'}`);
+                }
+
+                const data = await response.json();
+                let replyText = "";
+                if (data.choices && data.choices[0] && data.choices[0].message) {
+                    replyText = data.choices[0].message.content || "";
+                    if (!replyText && data.choices[0].message.reasoning_content) {
+                        replyText = data.choices[0].message.reasoning_content;
+                    }
+                }
+
+                if (!replyText) {
+                    replyText = "Received empty response from model.";
+                }
+
+                // Strip all thinking tags completely
+                replyText = replyText.replace(/<think>[\s\S]*?<\/think>/g, '').replace(/<\/?think>/g, '').trim();
+
+                const botMsg = {
+                    role: "assistant",
+                    content: replyText,
+                    time: formatTime(new Date())
+                };
+
+                removeTypingIndicator();
+                vibrate(40);
+                chatMessages.push(botMsg);
+                appendMessageUI(botMsg);
+                saveChatHistory();
+
+            } catch (err) {
+                console.error("LLM Error:", err);
+                removeTypingIndicator();
+                headerStatus.textContent = "error connecting";
+                headerStatus.className = "contact-status offline";
+                onlineDot.style.backgroundColor = "#ef5350";
+
+                const errorMsg = {
+                    role: "assistant",
+                    content: `⚠️ Failed to reach local model at ${serverUrl}.\nCheck that llama-server is active and Tailscale/LAN is connected. (${err.message})`,
+                    time: formatTime(new Date())
+                };
+                chatMessages.push(errorMsg);
+                appendMessageUI(errorMsg);
+                saveChatHistory();
+
+                setTimeout(() => {
+                    headerStatus.textContent = "online";
+                    headerStatus.className = "contact-status";
+                    onlineDot.style.backgroundColor = "#00d95a";
+                }, 5000);
+            } finally {
+                isGenerating = false;
+            }
+        }
+
+        sendBtn.addEventListener("click", sendMessage);
+
+        // Clear Chat
+        clearChatBtn.addEventListener("click", () => {
+            if (confirm("Clear all chat messages?")) {
+                chatMessages = [];
+                localStorage.removeItem("vato_chat_history");
+                loadChatHistory();
+            }
+        });
+
+        // Settings Modal
+        settingsBtn.addEventListener("click", () => {
+            serverUrlInput.value = serverUrl;
+            systemPromptInput.value = systemPrompt;
+            testStatusMsg.className = "status-msg";
+            settingsModal.classList.add("open");
+        });
+
+        cancelSettingsBtn.addEventListener("click", () => {
+            settingsModal.classList.remove("open");
+        });
+
+        window.setServerUrl = function(url) {
+            serverUrlInput.value = url;
+        };
+
+        saveSettingsBtn.addEventListener("click", () => {
+            serverUrl = serverUrlInput.value.trim() || DEFAULT_SERVER;
+            systemPrompt = systemPromptInput.value.trim() || DEFAULT_SYSTEM;
+            localStorage.setItem("vato_server_url", serverUrl);
+            localStorage.setItem("vato_system_prompt", systemPrompt);
+            settingsModal.classList.remove("open");
+            checkConnection();
+        });
+
+        // Test Connection
+        testConnBtn.addEventListener("click", async () => {
+            const url = serverUrlInput.value.trim() || DEFAULT_SERVER;
+            testStatusMsg.className = "status-msg";
+            testStatusMsg.textContent = "Testing connection...";
+            testStatusMsg.style.display = "block";
+
+            try {
+                const endpoint = url.replace(/\/+$/, '') + "/v1/models";
+                const res = await fetch(endpoint, { method: "GET" });
+                if (res.ok) {
+                    const data = await res.json();
+                    let modelName = "llama.cpp";
+                    if (data.data && data.data[0] && data.data[0].id) {
+                        modelName = data.data[0].id;
+                    } else if (data.models && data.models[0] && data.models[0].name) {
+                        modelName = data.models[0].name;
+                    }
+                    testStatusMsg.className = "status-msg success";
+                    testStatusMsg.textContent = `✓ Connected! Model: ${modelName}`;
+                } else {
+                    testStatusMsg.className = "status-msg error";
+                    testStatusMsg.textContent = `Server returned HTTP ${res.status}`;
+                }
+            } catch(e) {
+                testStatusMsg.className = "status-msg error";
+                testStatusMsg.textContent = `Connection failed: ${e.message}`;
+            }
+        });
+
+        async function checkConnection() {
+            try {
+                const endpoint = serverUrl.replace(/\/+$/, '') + "/v1/models";
+                const res = await fetch(endpoint, { method: "GET" });
+                if (res.ok) {
+                    headerStatus.textContent = "online";
+                    headerStatus.className = "contact-status";
+                    onlineDot.style.backgroundColor = "#00d95a";
+                } else {
+                    headerStatus.textContent = "server error";
+                    headerStatus.className = "contact-status offline";
+                    onlineDot.style.backgroundColor = "#ef5350";
+                }
+            } catch(e) {
+                headerStatus.textContent = "offline";
+                headerStatus.className = "contact-status offline";
+                onlineDot.style.backgroundColor = "#ef5350";
+            }
+        }
+
+        const CURRENT_VERSION = 4;
+        function downloadLatestApk() {
+            const url = serverUrl.replace(/\/+$/, '') + '/vato.apk';
+            window.location.href = url;
+        }
+        document.getElementById('updateAppBtn').addEventListener('click', () => {
+            if (confirm("Download latest Vato APK update?")) {
+                downloadLatestApk();
+            }
+        });
+        document.getElementById('downloadApkBtn').addEventListener('click', downloadLatestApk);
+
+        async function checkAppUpdate() {
+            try {
+                const res = await fetch(serverUrl.replace(/\/+$/, '') + '/version');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.versionCode && data.versionCode > CURRENT_VERSION) {
+                        const banner = document.createElement('div');
+                        banner.className = 'date-pill';
+                        banner.style.backgroundColor = '#005c4b';
+                        banner.style.color = '#fff';
+                        banner.style.cursor = 'pointer';
+                        banner.innerHTML = `⬇️ Update v${data.versionName || data.versionCode} available! Tap to download`;
+                        banner.onclick = downloadLatestApk;
+                        chatContainer.insertBefore(banner, chatContainer.children[1] || null);
+                    }
+                }
+            } catch(e) {}
+        }
+
+        // Init
+        loadChatHistory();
+        checkConnection();
+        checkAppUpdate();
+    </script>
+</body>
+</html>

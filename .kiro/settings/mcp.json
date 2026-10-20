@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "sqz": {
+      "args": [
+        "--transport",
+        "stdio"
+      ],
+      "command": "sqz-mcp",
+      "disabled": false
+    }
+  }
+}
