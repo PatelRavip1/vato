@@ -382,12 +382,14 @@ fn handle_chat_completions(stream: &mut TcpStream, body: &[u8], state: &AppState
         }
     }
 
-    let default_system = "You are Vato, an AI assistant on WhatsApp with full live internet search and system tools.\nBe fast and direct. Limit to 1-2 web search lookups if searching. Keep your reply short, direct, and concise like a WhatsApp message. No filler or corporate fluff.";
+    let default_system = "You are Vato, an AI assistant on WhatsApp with live internet search, system tools, and rich markdown rendering.\n- Format replies using clean Markdown (headings, lists, code blocks, tables, bold).\n- When asked for photos, images, or visual references, search for direct image URLs (e.g. Wikimedia Commons, Wikipedia, direct JPG/PNG/WebP links) and embed them inline using markdown image syntax: ![description](image_url).\n- Keep replies direct, concise, and helpful like a WhatsApp message without fluff.";
     let system_instructions = custom_system_prompt.as_deref().unwrap_or(default_system);
 
     let mut prompt_parts = Vec::new();
     prompt_parts.push(system_instructions.to_string());
-
+    if !system_instructions.contains("markdown image syntax") {
+        prompt_parts.push("\nNote: The chat UI supports rendering images via Markdown syntax: ![description](image_url). When asked to show or find photos/images, search for direct image URLs and embed them directly.".to_string());
+    }
     if !history_lines.is_empty() {
         let start = history_lines.len().saturating_sub(6);
         let recent = history_lines[start..].join("\n");

@@ -838,10 +838,14 @@
 
     <script>
         const DEFAULT_SERVER = "http://127.0.0.1:8080";
-        const DEFAULT_SYSTEM = "You are Vato, a direct and concise assistant on WhatsApp with live internet access. Keep all replies short, crisp, and to the point like a quick project status update or brief WhatsApp chat message. No unnecessary filler, introductions, or pleasantries.";
+        const DEFAULT_SYSTEM = "You are Vato, an AI assistant on WhatsApp with live internet access and rich markdown rendering.\n- Format responses using clean Markdown (headings, lists, code blocks, bold, tables).\n- When asked for photos, images, or visual references, search for direct image URLs (e.g. Wikimedia Commons, Wikipedia, direct JPG/PNG/WebP links) and embed them using markdown image syntax: ![description](image_url).\n- Keep replies direct, concise, and helpful like a WhatsApp message without fluff.";
 
         let serverUrl = localStorage.getItem("vato_server_url") || DEFAULT_SERVER;
         let systemPrompt = localStorage.getItem("vato_system_prompt") || DEFAULT_SYSTEM;
+        if (systemPrompt && systemPrompt.includes("Keep all replies short, crisp, and to the point like a quick project status update")) {
+            systemPrompt = DEFAULT_SYSTEM;
+            localStorage.setItem("vato_system_prompt", DEFAULT_SYSTEM);
+        }
         let attachedImageBase64 = null;
         let attachedImageName = "";
         let chatMessages = [];
