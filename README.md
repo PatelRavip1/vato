@@ -35,19 +35,50 @@ just `aapt2`/`javac`/`d8` + `cargo`.
 | `server/src/main.rs` | `vato-proxy` — OpenAI-compat HTTP → `omp` bridge |
 | `build.sh` | aapt2 → javac → d8 → zipalign → apksigner pipeline |
 
-## Build & run
+## Prerequisites & Setup (Fresh System)
 
-**Proxy**
+### 1. Backend Proxy (`vato-proxy`)
+- **Rust & Cargo:** 1.70+ (`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`)
+- **C compiler / headers:** `gcc` / `clang` / `build-essential` (for `libc` bindings)
+- **OMP CLI:** `omp` installed and available in `$PATH` (or specified via `OMP_BIN`)
+- **Model:** A working model configured in `omp` (defaults to `unqwen`, override with `VATO_MODEL=<name>`)
+
+### 2. Android APK Build
+No Android Studio or Gradle needed — builds entirely via standard CLI tools:
+- **JDK 17+ or 21:** `javac` and `keytool` in `$PATH` or `$JAVA_HOME/bin`
+- **Android SDK:** Set `ANDROID_HOME` (defaults to `~/.android/sdk`):
+  - Platform: `platforms/android-34/android.jar`
+  - Build Tools: `build-tools/34.0.0` (must contain `aapt2`, `d8`, `zipalign`, `apksigner`)
+- **Utilities:** `bash`, `zip`, `du`
+
+Install Android SDK CLI components via `sdkmanager`:
 ```bash
-cd server && cargo run --release   # listens on :8080
+sdkmanager "platforms;android-34" "build-tools;34.0.0"
 ```
 
-**APK**
+### 3. Android Client Device
+- Android 7.0+ (API 24+) phone or emulator
+- Connected to the same local Wi-Fi or Tailscale network as your host
+
+---
+
+## Build & Run
+
+**1. Start the proxy:**
 ```bash
-./build.sh   # → vato.apk
+cd server && cargo run --release   # listens on port 8080
 ```
-Needs Android build-tools `34.0.0`, platform `android-34`, and JDK 17+.
-The debug keystore is auto-generated on first run.
+
+**2. Build the APK:**
+```bash
+./build.sh   # builds vato.apk; generates debug keystore automatically on first run
+```
+
+**3. Install on phone:**
+```bash
+adb install -r vato.apk
+# Or navigate to http://<host-ip>:8080/download on your phone's browser
+```
 
 ## Config knobs
 
