@@ -8,11 +8,11 @@ just `aapt2`/`javac`/`d8` + `cargo`.
 ## Architecture
 
 ```
-┌────────────────────────┐   HTTP    ┌──────────────────────┐  spawns  ┌────────────┐
-│ Android WebView (Java) │ ────────► │ vato-proxy (Rust)    │ ───────► │ omp CLI     │
+┌────────────────────────┐   HTTP    ┌──────────────────────┐  spawns  ┌──────────────┐
+│ Android WebView (Java) │ ────────► │ vato-proxy (Rust)    │ ───────► │ omp CLI      │
 │  assets/index.html     │  /v1/...  │  :8080               │          │ (model:      │
-│  chat UI               │ ◄──────── │  OpenAI-compat API   │ ◄──────── │  unqwen)     │
-└────────────────────────┘           └──────────────────────┘          └────────────┘
+│  chat UI               │ ◄──────── │  OpenAI-compat API   │ ◄─────── │  unqwen)     │
+└────────────────────────┘           └──────────────────────┘          └──────────────┘
 ```
 
 1. **Android app** (`src/com/vato/qwenchat/MainActivity.java`) — single `Activity`
