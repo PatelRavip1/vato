@@ -13,3 +13,4 @@ build/
 target/
 *.keystore
 debug.keystore
+report.md

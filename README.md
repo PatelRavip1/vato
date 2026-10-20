@@ -53,3 +53,11 @@ The debug keystore is auto-generated on first run.
 
 - Model / `omp` path: `OMP_BIN`, `VATO_MODEL` environment variables (defaults: `omp`, `unqwen`).
 - Default server the app dials: `DEFAULT_SERVER` in `assets/index.html` (configurable via in-app Settings).
+
+## Security & Network Exposure
+
+`vato-proxy` binds across all local IPv4 interfaces on port 8080 with `Access-Control-Allow-Origin: *` and **no authentication**. Incoming prompts are forwarded directly to `omp`.
+
+- **Local LAN / Tailscale only:** Designed strictly for a trusted local home Wi-Fi or private Tailscale VPN.
+- **Do not expose to public internet:** Never port-forward port 8080 or run `vato-proxy` on a public IP (e.g., VPS / cloud host) without an authenticating reverse proxy.
+- **Shared Wi-Fi warning:** On untrusted or public Wi-Fi networks (cafes, dorms, coworking spaces), other devices on the same subnet can reach the proxy and trigger queries.

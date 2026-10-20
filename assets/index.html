@@ -519,7 +519,8 @@
             display: none;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            padding: 16px;
+            overflow-y: auto;
             animation: fadeIn 0.2s;
         }
 
@@ -537,7 +538,11 @@
             display: flex;
             flex-direction: column;
             gap: 16px;
-        }
+            max-height: 90vh;
+            max-height: 90dvh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: auto;
 
         .modal-title {
             font-size: 18px;
@@ -727,7 +732,7 @@
                 <div class="form-group" style="border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 4px;">
                     <label class="form-label">App Updates</label>
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 13px; color: var(--text-secondary);">Version 1.1.0</span>
+                        <span style="font-size: 13px; color: var(--text-secondary);">Version 1.3.0</span>
                         <button type="button" class="btn btn-secondary" id="downloadApkBtn" style="font-size: 12px; padding: 6px 12px; color: var(--accent-green);">⬇️ Download Latest APK</button>
                     </div>
                 </div>
@@ -823,7 +828,21 @@
         }
 
         function saveChatHistory() {
-            localStorage.setItem("vato_chat_history", JSON.stringify(chatMessages.slice(-50)));
+            try {
+                // Keep last 50; strip large base64 strings from older messages to stay well under 5MB quota
+                const toSave = chatMessages.slice(-50).map((m, idx, arr) => {
+                    if (m.image && idx < arr.length - 2) {
+                        return { ...m, image: null, hasImage: true };
+                    }
+                    return m;
+                });
+                localStorage.setItem("vato_chat_history", JSON.stringify(toSave));
+            } catch (e) {
+                try {
+                    const textOnly = chatMessages.slice(-30).map(m => ({ ...m, image: null }));
+                    localStorage.setItem("vato_chat_history", JSON.stringify(textOnly));
+                } catch (_) {}
+            }
         }
 
         function renderAllMessages() {
@@ -1011,9 +1030,8 @@
             const image = attachedImageBase64;
 
             if (!text && !image) return;
-
+            isGenerating = true;
             vibrate(30);
-
             // Reset inputs
             messageInput.value = "";
             messageInput.style.height = "auto";
@@ -1033,8 +1051,6 @@
             appendMessageUI(userMsg);
             saveChatHistory();
 
-            // Prepare LLM request
-            isGenerating = true;
             showTypingIndicator();
 
             try {
@@ -1045,8 +1061,9 @@
                 const recentHistory = chatMessages.slice(-10);
                 for (let i = 0; i < recentHistory.length; i++) {
                     const m = recentHistory[i];
+                    const isLastMsg = (i === recentHistory.length - 1);
                     if (m.role === "user") {
-                        if (m.image) {
+                        if (m.image && isLastMsg) {
                             apiMessages.push({
                                 role: "user",
                                 content: [
@@ -1055,7 +1072,7 @@
                                 ]
                             });
                         } else {
-                            apiMessages.push({ role: "user", content: m.content });
+                            apiMessages.push({ role: "user", content: m.content || (m.image ? "[Attached Image]" : "") });
                         }
                     } else if (m.role === "assistant") {
                         apiMessages.push({ role: "assistant", content: m.content });
@@ -1071,7 +1088,7 @@
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
-                                model: "qwen3.8-flash-next",
+                                model: "unqwen",
                                 messages: apiMessages,
                                 temperature: 0.7,
                                 max_tokens: 1024
@@ -1125,7 +1142,7 @@
 
                 const errorMsg = {
                     role: "assistant",
-                    content: `⚠️ Failed to reach local model at ${serverUrl}.\nCheck that llama-server is active and Tailscale/LAN is connected. (${err.message})`,
+                    content: `⚠️ Failed to reach local model at ${serverUrl}.\nCheck that vato-proxy is active on your host. (${err.message})`,
                     time: formatTime(new Date())
                 };
                 chatMessages.push(errorMsg);
@@ -1145,11 +1162,23 @@
         sendBtn.addEventListener("click", sendMessage);
 
         // Clear Chat
+        let clearChatTimer = null;
         clearChatBtn.addEventListener("click", () => {
-            if (confirm("Clear all chat messages?")) {
+            if (clearChatBtn.dataset.confirming === "true") {
+                clearChatBtn.dataset.confirming = "false";
+                clearTimeout(clearChatTimer);
                 chatMessages = [];
                 localStorage.removeItem("vato_chat_history");
                 loadChatHistory();
+            } else {
+                clearChatBtn.dataset.confirming = "true";
+                vibrate(20);
+                const origStatus = headerStatus.textContent;
+                headerStatus.textContent = "tap trash again to clear";
+                clearChatTimer = setTimeout(() => {
+                    clearChatBtn.dataset.confirming = "false";
+                    headerStatus.textContent = origStatus;
+                }, 3000);
             }
         });
 
@@ -1234,9 +1263,7 @@
             window.location.href = url;
         }
         document.getElementById('updateAppBtn').addEventListener('click', () => {
-            if (confirm("Download latest Vato APK update?")) {
-                downloadLatestApk();
-            }
+            downloadLatestApk();
         });
         document.getElementById('downloadApkBtn').addEventListener('click', downloadLatestApk);
 
@@ -1263,6 +1290,7 @@
         loadChatHistory();
         checkConnection();
         checkAppUpdate();
+        window.addEventListener("resize", scrollToBottom);
     </script>
 </body>
 </html>

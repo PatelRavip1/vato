@@ -193,6 +193,12 @@ fn handle_connection(mut stream: TcpStream, state: Arc<AppState>) {
         headers.push(line);
     }
 
+    const MAX_BODY_SIZE: usize = 20 * 1024 * 1024; // 20 MB max
+    if content_length > MAX_BODY_SIZE {
+        send_response(&mut stream, 413, "application/json", b"{\"error\":\"Payload Too Large\"}");
+        return;
+    }
+
     let mut body = vec![0u8; content_length];
     if content_length > 0 {
         if reader.read_exact(&mut body).is_err() {
@@ -523,6 +529,7 @@ fn send_response(stream: &mut TcpStream, status: u16, content_type: &str, body: 
         400 => "400 Bad Request",
         404 => "404 Not Found",
         405 => "405 Method Not Allowed",
+        413 => "413 Payload Too Large",
         500 => "500 Internal Server Error",
         _ => "200 OK",
     };
