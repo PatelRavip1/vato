@@ -741,6 +741,148 @@
             background-color: var(--accent-green);
             color: white;
         }
+
+        /* Live Talk Mode */
+        #liveTalkOverlay {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at 50% 35%, #16222b 0%, var(--bg-color) 70%);
+            z-index: 200;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 28px 16px calc(28px + env(safe-area-inset-bottom));
+            animation: fadeIn 0.2s;
+        }
+        #liveTalkOverlay.open { display: flex; }
+        .live-top {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .live-lang-toggle {
+            display: flex;
+            background: var(--input-bg);
+            border-radius: 14px;
+            padding: 3px;
+            gap: 2px;
+        }
+        .live-lang-toggle .lang-opt {
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 12px;
+            padding: 6px 12px;
+            border-radius: 11px;
+            cursor: pointer;
+        }
+        .live-lang-toggle .lang-opt.active {
+            background: var(--accent-green);
+            color: white;
+        }
+        .live-close {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: var(--input-bg);
+            color: var(--text-primary);
+            font-size: 18px;
+            cursor: pointer;
+        }
+        .live-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 26px;
+            flex: 1;
+            justify-content: center;
+            width: 100%;
+        }
+        .live-orb {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .live-orb .ring {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            border: 2px solid var(--accent-green);
+            opacity: 0.4;
+            animation: livePulse 1.6s ease-out infinite;
+        }
+        .live-orb .core {
+            width: 74px;
+            height: 74px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00a884, #128c7e);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 24px rgba(0,168,132,0.45);
+        }
+        .live-orb .core svg { width: 34px; height: 34px; fill: white; }
+        #liveTalkOverlay[data-phase="speaking"] .live-orb .core,
+        #liveTalkOverlay[data-phase="thinking"] .live-orb .core {
+            background: linear-gradient(135deg, #53bdeb, #2f8fb5);
+            box-shadow: 0 0 24px rgba(83,189,235,0.45);
+        }
+        #liveTalkOverlay[data-phase="speaking"] .ring { border-color: var(--whatsapp-blue); }
+        #liveTalkOverlay[data-phase="thinking"] .ring { border-color: var(--whatsapp-blue); animation-duration: 0.9s; }
+        @keyframes livePulse {
+            0% { transform: scale(0.9); opacity: 0.5; }
+            70% { transform: scale(1.25); opacity: 0; }
+            100% { transform: scale(1.25); opacity: 0; }
+        }
+        .live-bars {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            height: 34px;
+        }
+        .live-bars span {
+            width: 5px;
+            height: 100%;
+            border-radius: 3px;
+            background: var(--accent-green);
+            transform-origin: center;
+            animation: liveBar 1s ease-in-out infinite;
+        }
+        .live-bars span:nth-child(2) { animation-delay: 0.1s; }
+        .live-bars span:nth-child(3) { animation-delay: 0.2s; }
+        .live-bars span:nth-child(4) { animation-delay: 0.3s; }
+        .live-bars span:nth-child(5) { animation-delay: 0.4s; }
+        #liveTalkOverlay[data-phase="speaking"] .live-bars span,
+        #liveTalkOverlay[data-phase="thinking"] .live-bars span { background: var(--whatsapp-blue); }
+        @keyframes liveBar {
+            0%, 100% { transform: scaleY(0.25); }
+            50% { transform: scaleY(1); }
+        }
+        .live-status {
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .live-caption {
+            width: 100%;
+            max-height: 30vh;
+            overflow-y: auto;
+            font-size: 14px;
+            line-height: 1.5;
+            color: var(--text-primary);
+            text-align: center;
+            white-space: pre-wrap;
+        }
+        .live-caption .cap-user { color: var(--accent-green); display: block; margin-bottom: 6px; }
+        .live-caption .cap-ai { color: var(--whatsapp-blue); display: block; }
+        .live-hint { font-size: 11px; color: var(--text-secondary); }
     </style>
 </head>
 <body>
@@ -758,6 +900,9 @@
                 </div>
             </div>
             <div class="header-actions">
+                <button class="icon-btn" id="liveTalkBtn" title="Live Talk">
+                    <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg>
+                </button>
                 <button class="icon-btn" id="updateAppBtn" title="Download Latest APK">
                     <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
                 </button>
@@ -835,6 +980,29 @@
             </div>
         </div>
     </div>
+
+        <!-- Live Talk Mode Overlay -->
+        <div id="liveTalkOverlay" data-phase="idle">
+            <div class="live-top">
+                <div class="live-lang-toggle">
+                    <button class="lang-opt" data-lang="en-IN">English</button>
+                    <button class="lang-opt" data-lang="gu-IN">ગુજરાતી</button>
+                </div>
+                <button class="live-close" id="liveCloseBtn" title="Close">✕</button>
+            </div>
+            <div class="live-center">
+                <div class="live-orb">
+                    <div class="ring"></div>
+                    <div class="core">
+                        <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg>
+                    </div>
+                </div>
+                <div class="live-bars"><span></span><span></span><span></span><span></span><span></span></div>
+                <div class="live-status" id="liveStatus">Tap to start</div>
+            </div>
+            <div class="live-caption" id="liveCaption"></div>
+            <div class="live-hint">Tap anywhere while Vato speaks to interrupt</div>
+        </div>
 
     <script>
         const DEFAULT_SERVER = "http://127.0.0.1:8080";
@@ -1284,6 +1452,75 @@
             imagePreviewTray.classList.remove("show");
         });
 
+        // Shared completion call for text + Live Talk
+        async function requestReply(history) {
+            const apiMessages = [
+                { role: "system", content: systemPrompt }
+            ];
+
+            const recentHistory = history.slice(-10);
+            for (let i = 0; i < recentHistory.length; i++) {
+                const m = recentHistory[i];
+                const isLastMsg = (i === recentHistory.length - 1);
+                if (m.role === "user") {
+                    if (m.image && isLastMsg) {
+                        apiMessages.push({
+                            role: "user",
+                            content: [
+                                { type: "text", text: m.content || "Describe or inspect this image." },
+                                { type: "image_url", image_url: { url: m.image } }
+                            ]
+                        });
+                    } else {
+                        apiMessages.push({ role: "user", content: m.content || (m.image ? "[Attached Image]" : "") });
+                    }
+                } else if (m.role === "assistant") {
+                    apiMessages.push({ role: "assistant", content: m.content });
+                }
+            }
+
+            const endpoint = serverUrl.replace(/\/+$/, '') + "/v1/chat/completions";
+            let response = null;
+            let fetchError = null;
+            for (let attempt = 0; attempt < 2; attempt++) {
+                try {
+                    response = await fetch(endpoint, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            model: "unqwen",
+                            messages: apiMessages,
+                            temperature: 0.7,
+                            max_tokens: 1024
+                        })
+                    });
+                    if (response.ok) break;
+                } catch (e) {
+                    fetchError = e;
+                    if (attempt < 1) await new Promise(r => setTimeout(r, 1000));
+                }
+            }
+
+            if (!response || !response.ok) {
+                throw fetchError || new Error(`Server returned HTTP ${response ? response.status : 'error'}`);
+            }
+
+            const data = await response.json();
+            let replyText = "";
+            if (data.choices && data.choices[0] && data.choices[0].message) {
+                replyText = data.choices[0].message.content || "";
+                if (!replyText && data.choices[0].message.reasoning_content) {
+                    replyText = data.choices[0].message.reasoning_content;
+                }
+            }
+
+            if (!replyText) {
+                replyText = "Received empty response from model.";
+            }
+
+            // Strip all thinking tags completely
+            return replyText.replace(/<think>[\s\S]*?<\/think>/g, '').replace(/<\/?think>/g, '').trim();
+        }
         // Send Message
         async function sendMessage() {
             if (isGenerating) return;
@@ -1316,72 +1553,8 @@
             showTypingIndicator();
 
             try {
-                const apiMessages = [
-                    { role: "system", content: systemPrompt }
-                ];
+                const replyText = await requestReply(chatMessages);
 
-                const recentHistory = chatMessages.slice(-10);
-                for (let i = 0; i < recentHistory.length; i++) {
-                    const m = recentHistory[i];
-                    const isLastMsg = (i === recentHistory.length - 1);
-                    if (m.role === "user") {
-                        if (m.image && isLastMsg) {
-                            apiMessages.push({
-                                role: "user",
-                                content: [
-                                    { type: "text", text: m.content || "Describe or inspect this image." },
-                                    { type: "image_url", image_url: { url: m.image } }
-                                ]
-                            });
-                        } else {
-                            apiMessages.push({ role: "user", content: m.content || (m.image ? "[Attached Image]" : "") });
-                        }
-                    } else if (m.role === "assistant") {
-                        apiMessages.push({ role: "assistant", content: m.content });
-                    }
-                }
-
-                const endpoint = serverUrl.replace(/\/+$/, '') + "/v1/chat/completions";
-                let response = null;
-                let fetchError = null;
-                for (let attempt = 0; attempt < 2; attempt++) {
-                    try {
-                        response = await fetch(endpoint, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                                model: "unqwen",
-                                messages: apiMessages,
-                                temperature: 0.7,
-                                max_tokens: 1024
-                            })
-                        });
-                        if (response.ok) break;
-                    } catch (e) {
-                        fetchError = e;
-                        if (attempt < 1) await new Promise(r => setTimeout(r, 1000));
-                    }
-                }
-
-                if (!response || !response.ok) {
-                    throw fetchError || new Error(`Server returned HTTP ${response ? response.status : 'error'}`);
-                }
-
-                const data = await response.json();
-                let replyText = "";
-                if (data.choices && data.choices[0] && data.choices[0].message) {
-                    replyText = data.choices[0].message.content || "";
-                    if (!replyText && data.choices[0].message.reasoning_content) {
-                        replyText = data.choices[0].message.reasoning_content;
-                    }
-                }
-
-                if (!replyText) {
-                    replyText = "Received empty response from model.";
-                }
-
-                // Strip all thinking tags completely
-                replyText = replyText.replace(/<think>[\s\S]*?<\/think>/g, '').replace(/<\/?think>/g, '').trim();
 
                 const botMsg = {
                     role: "assistant",
@@ -1553,6 +1726,133 @@
         checkConnection();
         checkAppUpdate();
         window.addEventListener("resize", scrollToBottom);
+
+        // ===== Live Talk Mode =====
+        const voiceBridge = window.AndroidVoiceBridge;
+        const liveOverlay = document.getElementById("liveTalkOverlay");
+        const liveStatus = document.getElementById("liveStatus");
+        const liveCaption = document.getElementById("liveCaption");
+        let liveLang = localStorage.getItem("vato_voice_lang") || "en-IN";
+        let liveActive = false;
+        let livePhase = "idle";
+        let liveUtterCount = 0;
+
+        function setLivePhase(p) {
+            livePhase = p;
+            liveOverlay.dataset.phase = p;
+            liveStatus.textContent =
+                p === "listening" ? (liveLang.startsWith("gu") ? "শুনছি…" : "Listening…") :
+                p === "thinking" ? (liveLang.startsWith("gu") ? "વિચારી રહ્યું છે…" : "Thinking…") :
+                p === "speaking" ? (liveLang.startsWith("gu") ? "બોલાતું રહ્યું છે…" : "Speaking…") :
+                (liveLang.startsWith("gu") ? "શરૂ કરવા ટૅપ કરો" : "Tap to start");
+        }
+
+        function syncLiveLangUI() {
+            document.querySelectorAll("#liveTalkOverlay .lang-opt").forEach(b =>
+                b.classList.toggle("active", b.dataset.lang === liveLang));
+        }
+
+        function liveListen() {
+            setLivePhase("listening");
+            if (voiceBridge) voiceBridge.startListening(liveLang);
+        }
+
+        function liveStart() {
+            liveActive = true;
+            liveCaption.innerHTML = "";
+            syncLiveLangUI();
+            liveOverlay.classList.add("open");
+            liveListen();
+        }
+
+        window.__exitLiveTalk = function() {
+            liveActive = false;
+            if (voiceBridge) { voiceBridge.stopListening(); voiceBridge.stopSpeaking(); }
+            liveOverlay.classList.remove("open");
+            setLivePhase("idle");
+        };
+
+        document.getElementById("liveTalkBtn").addEventListener("click", () => { vibrate(25); liveStart(); });
+        document.getElementById("liveCloseBtn").addEventListener("click", () => window.__exitLiveTalk());
+        document.querySelectorAll("#liveTalkOverlay .lang-opt").forEach(b =>
+            b.addEventListener("click", (e) => {
+                e.stopPropagation();
+                liveLang = b.dataset.lang;
+                localStorage.setItem("vato_voice_lang", liveLang);
+                syncLiveLangUI();
+                if (liveActive && livePhase !== "thinking") {
+                    if (livePhase === "speaking" && voiceBridge) voiceBridge.stopSpeaking();
+                    liveListen();
+                }
+            }));
+
+        // Barge-in: tap the overlay (outside its controls) while AI talks/thinks -> stop + listen.
+        liveOverlay.addEventListener("click", (e) => {
+            if (!liveActive) { liveStart(); return; }
+            if (e.target.closest(".lang-opt, .live-close")) return;
+            if (livePhase === "speaking" || livePhase === "thinking") {
+                if (voiceBridge) voiceBridge.stopSpeaking();
+                liveListen();
+            }
+        });
+
+        window.__onVoicePermission = function(granted) {
+            if (liveActive && livePhase === "listening" && !granted) {
+                setLivePhase("idle");
+                liveStatus.textContent = liveLang.startsWith("gu") ? "માઇક પરવાનગી જોઈએ" : "Microphone permission needed";
+            }
+        };
+
+        window.__onVoicePartial = function(t) {
+            if (liveActive && livePhase === "listening") liveCaption.textContent = t;
+        };
+
+        window.__onVoiceFinal = function(t) {
+            if (!liveActive || livePhase !== "listening") return;
+            const text = (t || "").trim();
+            if (!text) { liveListen(); return; }
+            const userMsg = { role: "user", content: text, time: formatTime(new Date()) };
+            chatMessages.push(userMsg);
+            appendMessageUI(userMsg, false);
+            saveChatHistory();
+            liveCaption.innerHTML = '<span class="cap-user">' + text.replace(/</g, "&lt;") + "</span>";
+            setLivePhase("thinking");
+            (async () => {
+                try {
+                    const reply = await requestReply(chatMessages);
+                    if (!liveActive || livePhase !== "thinking") return;
+                    const botMsg = { role: "assistant", content: reply, time: formatTime(new Date()) };
+                    chatMessages.push(botMsg);
+                    appendMessageUI(botMsg, false);
+                    saveChatHistory();
+                    liveCaption.innerHTML += '<span class="cap-ai">' + reply.replace(/</g, "&lt;") + "</span>";
+                    liveUtterCount++;
+                    setLivePhase("speaking");
+                    if (voiceBridge) voiceBridge.speak(reply, liveLang, "live-" + liveUtterCount);
+                } catch (err) {
+                    liveCaption.innerHTML += '<span class="cap-ai">⚠️ ' + String(err.message).replace(/</g, "&lt;") + "</span>";
+                    liveListen();
+                }
+            })();
+        };
+
+        window.__onVoiceError = function(code) {
+            if (!liveActive) return;
+            // 6 = speech timeout (silence), 7 = no match -> just keep listening.
+            if (code === 6 || code === 7) { liveListen(); return; }
+            if (livePhase === "listening") {
+                liveCaption.innerHTML = '<span class="cap-ai">⚠️ ' + (liveLang.startsWith("gu") ? "ઓળખ થઈ નહીં" : "Didn't catch that") + "</span>";
+                liveListen();
+            }
+        };
+
+        window.__onTtsDone = function(id) {
+            if (liveActive && livePhase === "speaking" && String(id).startsWith("live-")) liveListen();
+        };
+
+        window.__onTtsError = function(id, code) {
+            if (liveActive && livePhase === "speaking" && String(id).startsWith("live-")) liveListen();
+        };
     </script>
 </body>
 </html>
