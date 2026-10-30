@@ -10,7 +10,7 @@ just `aapt2`/`javac`/`d8` + `cargo`.
 ```
 ┌────────────────────────┐   HTTP    ┌──────────────────────┐  spawns  ┌──────────────┐
 │ Android WebView (Java) │ ────────► │ vato-proxy (Rust)    │ ───────► │ omp CLI      │
-│  assets/index.html     │  /v1/...  │  :8080               │          │ (model:      │
+│  assets/index.html     │  /v1/...  │  :8081               │          │ (model:      │
 │  chat UI               │ ◄──────── │  OpenAI-compat API   │ ◄─────── │  unqwen)     │
 └────────────────────────┘           └──────────────────────┘          └──────────────┘
 ```
@@ -66,7 +66,7 @@ sdkmanager "platforms;android-34" "build-tools;34.0.0"
 
 **1. Start the proxy:**
 ```bash
-cd server && cargo run --release   # listens on port 8080
+cd server && cargo run --release   # listens on port 8081
 ```
 
 **2. Build the APK:**
@@ -77,7 +77,7 @@ cd server && cargo run --release   # listens on port 8080
 **3. Install on phone:**
 ```bash
 adb install -r vato.apk
-# Or navigate to http://<host-ip>:8080/download on your phone's browser
+# Or navigate to http://<host-ip>:8081/download on your phone's browser
 ```
 
 ## Config knobs
@@ -87,8 +87,8 @@ adb install -r vato.apk
 
 ## Security & Network Exposure
 
-`vato-proxy` binds across all local IPv4 interfaces on port 8080 with `Access-Control-Allow-Origin: *` and **no authentication**. Incoming prompts are forwarded directly to `omp`.
+`vato-proxy` binds across all local IPv4 interfaces on port 8081 with `Access-Control-Allow-Origin: *` and **no authentication**. Incoming prompts are forwarded directly to `omp`.
 
 - **Local LAN / Tailscale only:** Designed strictly for a trusted local home Wi-Fi or private Tailscale VPN.
-- **Do not expose to public internet:** Never port-forward port 8080 or run `vato-proxy` on a public IP (e.g., VPS / cloud host) without an authenticating reverse proxy.
+- **Do not expose to public internet:** Never port-forward port 8081 or run `vato-proxy` on a public IP (e.g., VPS / cloud host) without an authenticating reverse proxy.
 - **Shared Wi-Fi warning:** On untrusted or public Wi-Fi networks (cafes, dorms, coworking spaces), other devices on the same subnet can reach the proxy and trigger queries.

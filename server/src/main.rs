@@ -8,7 +8,7 @@ use std::process::Command;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-const DEFAULT_PORT: u16 = 8080;
+const DEFAULT_PORT: u16 = 8081;
 
 fn get_port() -> u16 {
     std::env::var("PORT")

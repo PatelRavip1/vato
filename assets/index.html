@@ -950,10 +950,10 @@
                 
                 <div class="form-group">
                     <label class="form-label">Server Endpoint</label>
-                    <input type="text" class="form-input" id="serverUrlInput" placeholder="http://127.0.0.1:8080">
+                    <input type="text" class="form-input" id="serverUrlInput" placeholder="http://127.0.0.1:8081">
                     <div class="quick-chips">
-                        <span class="chip" onclick="setServerUrl('http://127.0.0.1:8080')">Localhost (8080)</span>
-                        <span class="chip" onclick="setServerUrl('http://10.0.2.2:8080')">Emulator (10.0.2.2:8080)</span>
+                        <span class="chip" onclick="setServerUrl('http://127.0.0.1:8081')">Localhost (8081)</span>
+                        <span class="chip" onclick="setServerUrl('http://10.0.2.2:8081')">Emulator (10.0.2.2:8081)</span>
                     </div>
                 </div>
 
@@ -1005,10 +1005,14 @@
         </div>
 
     <script>
-        const DEFAULT_SERVER = "http://127.0.0.1:8080";
+        const DEFAULT_SERVER = "http://127.0.0.1:8081";
         const DEFAULT_SYSTEM = "You are Vato, an AI assistant on WhatsApp with live internet access and rich markdown rendering.\n- Format responses using clean Markdown (headings, lists, code blocks, bold, tables).\n- When asked for photos, images, or visual references, search for direct image URLs (e.g. Wikimedia Commons, Wikipedia, direct JPG/PNG/WebP links) and embed them using markdown image syntax: ![description](image_url).\n- Keep replies direct, concise, and helpful like a WhatsApp message without fluff.";
 
         let serverUrl = localStorage.getItem("vato_server_url") || DEFAULT_SERVER;
+        if (serverUrl === "http://127.0.0.1:8080") {
+            serverUrl = DEFAULT_SERVER;
+            localStorage.setItem("vato_server_url", DEFAULT_SERVER);
+        }
         let systemPrompt = localStorage.getItem("vato_system_prompt") || DEFAULT_SYSTEM;
         if (systemPrompt && systemPrompt.includes("Keep all replies short, crisp, and to the point like a quick project status update")) {
             systemPrompt = DEFAULT_SYSTEM;
