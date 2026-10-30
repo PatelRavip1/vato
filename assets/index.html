@@ -742,7 +742,7 @@
             color: white;
         }
 
-        /* Live Talk Mode */
+        /* WhatsApp Voice Call screen */
         #liveTalkOverlay {
             position: fixed;
             inset: 0;
@@ -756,12 +756,128 @@
             animation: fadeIn 0.2s;
         }
         #liveTalkOverlay.open { display: flex; }
-        .live-top {
+        .live-call-header {
             width: 100%;
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
             align-items: center;
+            gap: 4px;
         }
+        .live-call-title { font-size: 14px; font-weight: 600; color: var(--text-secondary); }
+        .live-call-secure {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+        .live-call-secure svg { width: 10px; height: 10px; fill: currentColor; flex: 0 0 auto; }
+        .live-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 22px;
+            flex: 1;
+            justify-content: center;
+            width: 100%;
+        }
+        .live-orb {
+            position: relative;
+            width: 130px;
+            height: 130px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .live-orb .ring {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            border: 2px solid var(--accent-green);
+            opacity: 0.4;
+            animation: livePulse 1.6s ease-out infinite;
+        }
+        .live-orb .ring.r2 { animation-delay: 0.5s; }
+        .live-orb .ring.r3 { animation-delay: 1s; }
+        .live-orb .core {
+            width: 88px;
+            height: 88px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00a884, #128c7e);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 42px;
+            font-weight: 700;
+            color: white;
+            box-shadow: 0 0 24px rgba(0,168,132,0.45);
+        }
+        #liveTalkOverlay[data-phase="speaking"] .live-orb .core,
+        #liveTalkOverlay[data-phase="thinking"] .live-orb .core {
+            background: linear-gradient(135deg, #53bdeb, #2f8fb5);
+            box-shadow: 0 0 24px rgba(83,189,235,0.45);
+        }
+        #liveTalkOverlay[data-phase="speaking"] .ring,
+        #liveTalkOverlay[data-phase="thinking"] .ring { border-color: var(--whatsapp-blue); }
+        #liveTalkOverlay[data-phase="thinking"] .ring { animation-duration: 0.9s; }
+        @keyframes livePulse {
+            0% { transform: scale(0.9); opacity: 0.5; }
+            70% { transform: scale(1.25); opacity: 0; }
+            100% { transform: scale(1.25); opacity: 0; }
+        }
+        .live-caller-name { font-size: 22px; font-weight: 700; color: var(--text-primary); }
+        .live-timer { font-size: 14px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+        .live-status {
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        #liveTalkOverlay[data-phase="speaking"] .live-status,
+        #liveTalkOverlay[data-phase="thinking"] .live-status { color: var(--whatsapp-blue); }
+        #liveTalkOverlay[data-phase="listening"] .live-status { color: var(--accent-green); }
+        .live-caption {
+            width: 100%;
+            max-height: 26vh;
+            overflow-y: auto;
+            font-size: 14px;
+            line-height: 1.5;
+            color: var(--text-primary);
+            text-align: center;
+            white-space: pre-wrap;
+        }
+        .live-caption .cap-user { color: var(--accent-green); display: block; margin-bottom: 6px; }
+        .live-caption .cap-ai { color: var(--whatsapp-blue); display: block; }
+        .live-actions {
+            width: 100%;
+            max-width: 380px;
+            display: flex;
+            align-items: center;
+            justify-content: space-evenly;
+            gap: 16px;
+        }
+        .live-action {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+        .live-action-btn {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            border: none;
+            background: var(--input-bg);
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .live-action-btn svg { width: 24px; height: 24px; fill: currentColor; }
+        .live-action-btn.active { background: #ff3b30; color: white; }
         .live-lang-toggle {
             display: flex;
             background: var(--input-bg);
@@ -782,107 +898,19 @@
             background: var(--accent-green);
             color: white;
         }
-        .live-close {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
+        .live-end-call {
+            width: 66px;
+            height: 66px;
             border: none;
-            background: var(--input-bg);
-            color: var(--text-primary);
-            font-size: 18px;
+            border-radius: 50%;
+            background: #e5352b;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
         }
-        .live-center {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 26px;
-            flex: 1;
-            justify-content: center;
-            width: 100%;
-        }
-        .live-orb {
-            position: relative;
-            width: 120px;
-            height: 120px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .live-orb .ring {
-            position: absolute;
-            inset: 0;
-            border-radius: 50%;
-            border: 2px solid var(--accent-green);
-            opacity: 0.4;
-            animation: livePulse 1.6s ease-out infinite;
-        }
-        .live-orb .core {
-            width: 74px;
-            height: 74px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #00a884, #128c7e);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 0 24px rgba(0,168,132,0.45);
-        }
-        .live-orb .core svg { width: 34px; height: 34px; fill: white; }
-        #liveTalkOverlay[data-phase="speaking"] .live-orb .core,
-        #liveTalkOverlay[data-phase="thinking"] .live-orb .core {
-            background: linear-gradient(135deg, #53bdeb, #2f8fb5);
-            box-shadow: 0 0 24px rgba(83,189,235,0.45);
-        }
-        #liveTalkOverlay[data-phase="speaking"] .ring { border-color: var(--whatsapp-blue); }
-        #liveTalkOverlay[data-phase="thinking"] .ring { border-color: var(--whatsapp-blue); animation-duration: 0.9s; }
-        @keyframes livePulse {
-            0% { transform: scale(0.9); opacity: 0.5; }
-            70% { transform: scale(1.25); opacity: 0; }
-            100% { transform: scale(1.25); opacity: 0; }
-        }
-        .live-bars {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            height: 34px;
-        }
-        .live-bars span {
-            width: 5px;
-            height: 100%;
-            border-radius: 3px;
-            background: var(--accent-green);
-            transform-origin: center;
-            animation: liveBar 1s ease-in-out infinite;
-        }
-        .live-bars span:nth-child(2) { animation-delay: 0.1s; }
-        .live-bars span:nth-child(3) { animation-delay: 0.2s; }
-        .live-bars span:nth-child(4) { animation-delay: 0.3s; }
-        .live-bars span:nth-child(5) { animation-delay: 0.4s; }
-        #liveTalkOverlay[data-phase="speaking"] .live-bars span,
-        #liveTalkOverlay[data-phase="thinking"] .live-bars span { background: var(--whatsapp-blue); }
-        @keyframes liveBar {
-            0%, 100% { transform: scaleY(0.25); }
-            50% { transform: scaleY(1); }
-        }
-        .live-status {
-            font-size: 13px;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .live-caption {
-            width: 100%;
-            max-height: 30vh;
-            overflow-y: auto;
-            font-size: 14px;
-            line-height: 1.5;
-            color: var(--text-primary);
-            text-align: center;
-            white-space: pre-wrap;
-        }
-        .live-caption .cap-user { color: var(--accent-green); display: block; margin-bottom: 6px; }
-        .live-caption .cap-ai { color: var(--whatsapp-blue); display: block; }
-        .live-hint { font-size: 11px; color: var(--text-secondary); }
+        .live-end-call svg { width: 30px; height: 30px; fill: currentColor; transform: rotate(135deg); }
     </style>
 </head>
 <body>
@@ -900,8 +928,8 @@
                 </div>
             </div>
             <div class="header-actions">
-                <button class="icon-btn" id="liveTalkBtn" title="Live Talk">
-                    <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg>
+                <button class="icon-btn" id="liveTalkBtn" title="Voice Call">
+                    <svg viewBox="0 0 24 24"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.68.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/></svg>
                 </button>
                 <button class="icon-btn" id="updateAppBtn" title="Download Latest APK">
                     <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
@@ -981,27 +1009,42 @@
         </div>
     </div>
 
-        <!-- Live Talk Mode Overlay -->
+        <!-- Voice Call Overlay -->
         <div id="liveTalkOverlay" data-phase="idle">
-            <div class="live-top">
-                <div class="live-lang-toggle">
-                    <button class="lang-opt" data-lang="en-IN">English</button>
-                    <button class="lang-opt" data-lang="gu-IN">ગુજરાતી</button>
+            <div class="live-call-header">
+                <div class="live-call-title">WhatsApp Voice Call</div>
+                <div class="live-call-secure">
+                    <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM9 8V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9z"/></svg>
+                    <span>End-to-end encrypted</span>
                 </div>
-                <button class="live-close" id="liveCloseBtn" title="Close">✕</button>
             </div>
             <div class="live-center">
                 <div class="live-orb">
                     <div class="ring"></div>
-                    <div class="core">
-                        <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg>
-                    </div>
+                    <div class="ring r2"></div>
+                    <div class="ring r3"></div>
+                    <div class="core">V</div>
                 </div>
-                <div class="live-bars"><span></span><span></span><span></span><span></span><span></span></div>
-                <div class="live-status" id="liveStatus">Tap to start</div>
+                <div class="live-caller-name">Vato</div>
+                <div class="live-timer" id="liveTimer">00:00</div>
+                <div class="live-status" id="liveStatus">Connecting…</div>
             </div>
             <div class="live-caption" id="liveCaption"></div>
-            <div class="live-hint">Tap anywhere while Vato speaks to interrupt</div>
+            <div class="live-actions">
+                <div class="live-action">
+                    <button class="live-action-btn" id="liveMuteBtn" title="Mute">
+                        <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg>
+                    </button>
+                    <span>Mute</span>
+                </div>
+                <div class="live-lang-toggle">
+                    <button class="lang-opt" data-lang="en-IN">English</button>
+                    <button class="lang-opt" data-lang="gu-IN">ગુજરાતી</button>
+                </div>
+                <button class="live-end-call" id="liveEndCallBtn" title="End call">
+                    <svg viewBox="0 0 24 24"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.68.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/></svg>
+                </button>
+            </div>
         </div>
 
     <script>
@@ -1731,24 +1774,42 @@
         checkAppUpdate();
         window.addEventListener("resize", scrollToBottom);
 
-        // ===== Live Talk Mode =====
+        // ===== Voice Call Mode =====
         const voiceBridge = window.AndroidVoiceBridge;
         const liveOverlay = document.getElementById("liveTalkOverlay");
         const liveStatus = document.getElementById("liveStatus");
         const liveCaption = document.getElementById("liveCaption");
+        const liveTimerEl = document.getElementById("liveTimer");
+        const liveMuteBtn = document.getElementById("liveMuteBtn");
         let liveLang = localStorage.getItem("vato_voice_lang") || "en-IN";
         let liveActive = false;
         let livePhase = "idle";
         let liveUtterCount = 0;
+        let liveMuted = false;
+        let liveSeconds = 0;
+        let liveTimerInt = null;
+
+        const LIVE_GREETINGS = {
+            "gu-IN": "નમસ્તે! હું વાતો છું. બોલો, શું વાત કરવી છે?",
+            "en-IN": "Hello! How can I help you today?"
+        };
 
         function setLivePhase(p) {
             livePhase = p;
             liveOverlay.dataset.phase = p;
+            const gu = liveLang.startsWith("gu");
             liveStatus.textContent =
-                p === "listening" ? (liveLang.startsWith("gu") ? "শুনছি…" : "Listening…") :
-                p === "thinking" ? (liveLang.startsWith("gu") ? "વિચારી રહ્યું છે…" : "Thinking…") :
-                p === "speaking" ? (liveLang.startsWith("gu") ? "બોલાતું રહ્યું છે…" : "Speaking…") :
-                (liveLang.startsWith("gu") ? "શરૂ કરવા ટૅપ કરો" : "Tap to start");
+                p === "listening" ? (gu ? "સાંભળી રહ્યું છે…" : "Listening…") :
+                p === "thinking"  ? (gu ? "વિચારી રહ્યું છે…" : "Thinking…") :
+                p === "speaking"  ? (gu ? "બોલી રહ્યું છે…" : "Speaking…") :
+                p === "muted"     ? (gu ? "મ્યુટ કરેલું" : "Muted") :
+                (gu ? "કૉલ જોડાઈ રહ્યો છે…" : "Connecting…");
+        }
+
+        function renderTimer() {
+            const m = String(Math.floor(liveSeconds / 60)).padStart(2, "0");
+            const s = String(liveSeconds % 60).padStart(2, "0");
+            liveTimerEl.textContent = m + ":" + s;
         }
 
         function syncLiveLangUI() {
@@ -1757,27 +1818,55 @@
         }
 
         function liveListen() {
+            if (!liveActive) return;
+            if (liveMuted) { setLivePhase("muted"); return; }
             setLivePhase("listening");
             if (voiceBridge) voiceBridge.startListening(liveLang);
         }
 
+        function liveGreet() {
+            setLivePhase("speaking");
+            const greet = LIVE_GREETINGS[liveLang] || LIVE_GREETINGS["en-IN"];
+            liveCaption.innerHTML = '<span class="cap-ai">' + greet + "</span>";
+            if (voiceBridge) voiceBridge.speak(greet, liveLang, "live-greet");
+        }
+
         function liveStart() {
             liveActive = true;
+            liveMuted = false;
+            liveMuteBtn.classList.remove("active");
+            liveSeconds = 0; renderTimer();
+            clearInterval(liveTimerInt);
+            liveTimerInt = setInterval(() => { liveSeconds++; renderTimer(); }, 1000);
             liveCaption.innerHTML = "";
             syncLiveLangUI();
             liveOverlay.classList.add("open");
-            liveListen();
+            if (voiceBridge && voiceBridge.setCallMode) voiceBridge.setCallMode(true);
+            liveGreet();
         }
 
         window.__exitLiveTalk = function() {
             liveActive = false;
-            if (voiceBridge) { voiceBridge.stopListening(); voiceBridge.stopSpeaking(); }
+            clearInterval(liveTimerInt);
+            liveTimerInt = null;
+            if (voiceBridge) { voiceBridge.stopListening(); voiceBridge.stopSpeaking(); if (voiceBridge.setCallMode) voiceBridge.setCallMode(false); }
             liveOverlay.classList.remove("open");
             setLivePhase("idle");
         };
 
         document.getElementById("liveTalkBtn").addEventListener("click", () => { vibrate(25); liveStart(); });
-        document.getElementById("liveCloseBtn").addEventListener("click", () => window.__exitLiveTalk());
+        document.getElementById("liveEndCallBtn").addEventListener("click", (e) => { e.stopPropagation(); window.__exitLiveTalk(); });
+        liveMuteBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            liveMuted = !liveMuted;
+            liveMuteBtn.classList.toggle("active", liveMuted);
+            if (liveMuted) {
+                if (voiceBridge) { voiceBridge.stopSpeaking(); voiceBridge.stopListening(); }
+                setLivePhase("muted");
+            } else {
+                liveListen();
+            }
+        });
         document.querySelectorAll("#liveTalkOverlay .lang-opt").forEach(b =>
             b.addEventListener("click", (e) => {
                 e.stopPropagation();
@@ -1786,14 +1875,14 @@
                 syncLiveLangUI();
                 if (liveActive && livePhase !== "thinking") {
                     if (livePhase === "speaking" && voiceBridge) voiceBridge.stopSpeaking();
-                    liveListen();
+                    if (liveMuted) liveGreet(); else liveListen();
                 }
             }));
 
-        // Barge-in: tap the overlay (outside its controls) while AI talks/thinks -> stop + listen.
+        // Barge-in: tap the overlay (outside its controls) while Vato talks/thinks -> stop + listen.
         liveOverlay.addEventListener("click", (e) => {
             if (!liveActive) { liveStart(); return; }
-            if (e.target.closest(".lang-opt, .live-close")) return;
+            if (e.target.closest(".lang-opt, .live-action-btn, .live-end-call")) return;
             if (livePhase === "speaking" || livePhase === "thinking") {
                 if (voiceBridge) voiceBridge.stopSpeaking();
                 liveListen();
@@ -1808,7 +1897,10 @@
         };
 
         window.__onVoicePartial = function(t) {
-            if (liveActive && livePhase === "listening") liveCaption.textContent = t;
+            if (liveActive && livePhase === "listening") {
+                const ai = liveCaption.querySelector(".cap-ai");
+                liveCaption.innerHTML = '<span class="cap-user">' + t.replace(/</g, "&lt;") + "</span>" + (ai ? ai.outerHTML : "");
+            }
         };
 
         window.__onVoiceFinal = function(t) {
@@ -1841,15 +1933,17 @@
         };
 
         window.__onVoiceError = function(code) {
-            if (!liveActive) return;
+            if (!liveActive || liveMuted) return;
             // 6 = speech timeout (silence), 7 = no match -> just keep listening.
             if (code === 6 || code === 7) { liveListen(); return; }
             if (livePhase === "listening") {
-                liveCaption.innerHTML = '<span class="cap-ai">⚠️ ' + (liveLang.startsWith("gu") ? "ઓળખ થઈ નહીં" : "Didn't catch that") + "</span>";
+                const ai = liveCaption.querySelector(".cap-ai");
+                liveCaption.innerHTML = (ai ? ai.outerHTML : "") + '<span class="cap-ai">⚠️ ' + (liveLang.startsWith("gu") ? "ઓળખ થઈ નહીં" : "Didn't catch that") + "</span>";
                 liveListen();
             }
         };
 
+        // Any utterance whose id starts with "live-" (greeting or a reply) hands the mic back when done.
         window.__onTtsDone = function(id) {
             if (liveActive && livePhase === "speaking" && String(id).startsWith("live-")) liveListen();
         };

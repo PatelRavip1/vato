@@ -1,7 +1,9 @@
 package com.vato.qwenchat;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
+import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Build;
@@ -199,6 +201,10 @@ public class MainActivity extends Activity {
         private SpeechRecognizer recognizer;
         private boolean pendingAutoStart = false;
         private String pendingStartLang = "default";
+        private AudioManager audio;
+        private boolean callMode = false;
+        private int prevMode = AudioManager.MODE_NORMAL;
+        private boolean prevSpeaker = false;
 
         private void notifyDone(String id) {
             main.post(() -> js("window.__onTtsDone && window.__onTtsDone(" + JSONObject.quote(id) + ")"));
@@ -291,6 +297,34 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public boolean isTtsReady() {
             return ttsReady;
+        }
+
+        @JavascriptInterface
+        public void setCallMode(boolean on) {
+            activity.runOnUiThread(() -> {
+                if (audio == null) {
+                    try { audio = (AudioManager) activity.getSystemService(Context.AUDIO_SERVICE); } catch (Exception ignored) {}
+                }
+                if (audio == null) return;
+                try {
+                    if (on && !callMode) {
+                        prevMode = audio.getMode();
+                        prevSpeaker = audio.isSpeakerphoneOn();
+                        audio.setMode(AudioManager.MODE_IN_COMMUNICATION);
+                        audio.setSpeakerphoneOn(true);
+                        int max = audio.getStreamMaxVolume(AudioManager.STREAM_VOICE_CALL);
+                        int target = (int) Math.ceil(max * 0.9);
+                        if (audio.getStreamVolume(AudioManager.STREAM_VOICE_CALL) < target) {
+                            audio.setStreamVolume(AudioManager.STREAM_VOICE_CALL, target, 0);
+                        }
+                        callMode = true;
+                    } else if (!on && callMode) {
+                        audio.setSpeakerphoneOn(prevSpeaker);
+                        audio.setMode(prevMode == AudioManager.MODE_IN_COMMUNICATION ? AudioManager.MODE_NORMAL : prevMode);
+                        callMode = false;
+                    }
+                } catch (Exception ignored) {}
+            });
         }
 
         void onPermissionResult(boolean granted) {
