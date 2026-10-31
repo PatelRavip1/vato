@@ -205,12 +205,32 @@ public class MainActivity extends Activity {
         private boolean callMode = false;
         private int prevMode = AudioManager.MODE_NORMAL;
         private boolean prevSpeaker = false;
+        private void requestFocusForTts() {
+            if (!callMode) {
+                ensureAudio();
+                if (audio != null) {
+                    try { audio.requestAudioFocus(null, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK); } catch (Exception ignored) {}
+                }
+            }
+        }
+
+        private void abandonFocusForTts() {
+            if (!callMode && audio != null) {
+                try { audio.abandonAudioFocus(null); } catch (Exception ignored) {}
+            }
+        }
+
+        private void notifyStart(String id) {
+            main.post(() -> js("window.__onTtsStart && window.__onTtsStart(" + JSONObject.quote(id) + ")"));
+        }
 
         private void notifyDone(String id) {
+            abandonFocusForTts();
             main.post(() -> js("window.__onTtsDone && window.__onTtsDone(" + JSONObject.quote(id) + ")"));
         }
 
         private void notifyError(String id, int code) {
+            abandonFocusForTts();
             main.post(() -> js("window.__onTtsError && window.__onTtsError(" + JSONObject.quote(id) + ", " + code + ")"));
         }
 
@@ -281,6 +301,7 @@ public class MainActivity extends Activity {
                 if (tts == null) { init(); return; }
                 if (!ttsReady) { pendingTtsLocale = locale; return; }
                 try {
+                    requestFocusForTts();
                     tts.setLanguage(locale);
                     tts.speak(text, TextToSpeech.QUEUE_FLUSH, utteranceBundle(utteranceId), utteranceId);
                 } catch (Exception ignored) {}
@@ -290,8 +311,14 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void stopSpeaking() {
             activity.runOnUiThread(() -> {
+                abandonFocusForTts();
                 if (tts != null) { try { tts.stop(); } catch (Exception ignored) {} }
             });
+        }
+
+        @JavascriptInterface
+        public boolean isLanguageSupported(String lang) {
+            return tts != null && ttsReady && tts.isLanguageAvailable(toLocale(lang)) >= TextToSpeech.LANG_AVAILABLE;
         }
 
         @JavascriptInterface
@@ -302,9 +329,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void setCallMode(boolean on) {
             activity.runOnUiThread(() -> {
-                if (audio == null) {
-                    try { audio = (AudioManager) activity.getSystemService(Context.AUDIO_SERVICE); } catch (Exception ignored) {}
-                }
+                ensureAudio();
                 if (audio == null) return;
                 try {
                     if (on && !callMode) {
@@ -346,6 +371,12 @@ public class MainActivity extends Activity {
             } catch (Exception e) { return Locale.ENGLISH; }
         }
 
+        private void ensureAudio() {
+            if (audio == null) {
+                try { audio = (AudioManager) activity.getSystemService(Context.AUDIO_SERVICE); } catch (Exception ignored) {}
+            }
+        }
+
         private void ensureRecognizer() {
             if (recognizer != null) return;
             try {
@@ -385,7 +416,7 @@ public class MainActivity extends Activity {
     static class TtsListener extends UtteranceProgressListener {
         private final VoiceBridge bridge;
         TtsListener(VoiceBridge bridge) { this.bridge = bridge; }
-        @Override public void onStart(String id) {}
+        @Override public void onStart(String id) { bridge.notifyStart(id); }
         @Override public void onDone(String id) { bridge.notifyDone(id); }
         @Override @Deprecated public void onError(String id) { bridge.notifyError(id, -1); }
         @Override public void onError(String id, int code) { bridge.notifyError(id, code); }
