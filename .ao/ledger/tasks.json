@@ -1,0 +1,27 @@
+[
+  {
+    "id": 1,
+    "desc": "Inspect codebase and ideate in notes.md",
+    "status": "done"
+  },
+  {
+    "id": 2,
+    "desc": "Implement Auto-Speak toggle, stripMarkdownForTTS, auto-TTS, and bubble speak in assets/index.html",
+    "status": "done"
+  },
+  {
+    "id": 3,
+    "desc": "Automated verification test of markdown cleaner & logic",
+    "status": "done"
+  },
+  {
+    "id": 4,
+    "desc": "Build APK using ./build.sh and install via adb",
+    "status": "done"
+  },
+  {
+    "id": 5,
+    "desc": "Commit changes",
+    "status": "done"
+  }
+]
