@@ -1,0 +1,27 @@
+[
+  {
+    "id": "inspect-code",
+    "status": "completed",
+    "description": "Inspect MainActivity.java & build script"
+  },
+  {
+    "id": "ideation-ledger",
+    "status": "completed",
+    "description": "Record ideation in .ao/ledger/notes.md, plan.md, tasks.json"
+  },
+  {
+    "id": "implement-tts",
+    "status": "completed",
+    "description": "Implement TTS start event, audio focus ducking, and isLanguageSupported"
+  },
+  {
+    "id": "compile-verify",
+    "status": "completed",
+    "description": "Compile with ./build.sh and verify clean build"
+  },
+  {
+    "id": "git-commit",
+    "status": "completed",
+    "description": "Commit cleanly to ao/native-tts-focus"
+  }
+]
