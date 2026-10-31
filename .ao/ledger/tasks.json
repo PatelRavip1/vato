@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1,
+    "desc": "Inspect codebase, device connectivity, and ideate in notes.md",
+    "status": "done"
+  },
+  {
+    "id": 2,
+    "desc": "Implement test runner script tests/test_mobile_app.sh covering all requirements a-g",
+    "status": "done"
+  },
+  {
+    "id": 3,
+    "desc": "Execute tests/test_mobile_app.sh and verify zero failures and artifacts created",
+    "status": "done"
+  },
+  {
+    "id": 4,
+    "desc": "Update ledger files and commit cleanly to branch ao/mobile-e2e-test",
+    "status": "done"
+  }
+]
