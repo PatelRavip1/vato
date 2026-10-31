@@ -178,7 +178,10 @@
             width: 21px;
             height: 21px;
             fill: currentColor;
+        .icon-btn.active {
+            color: var(--accent-green);
         }
+
 
         /* Chat Wallpaper & Container */
         #chat-container {
@@ -412,7 +415,39 @@
             color: var(--text-secondary);
             margin-top: 3px;
             user-select: none;
+        .bubble-speak-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 2px 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            opacity: 0.65;
+            margin-right: 2px;
+            transition: opacity 0.15s, color 0.15s;
         }
+        .bubble-speak-btn:hover, .bubble-speak-btn:active {
+            opacity: 1;
+            color: var(--text-primary);
+        }
+        .bubble-speak-btn.speaking {
+            opacity: 1;
+            color: var(--accent-green);
+            animation: pulseSpeak 1s infinite alternate;
+        }
+        .bubble-speak-btn svg {
+            width: 14px;
+            height: 14px;
+            fill: currentColor;
+        }
+        @keyframes pulseSpeak {
+            from { transform: scale(1); }
+            to { transform: scale(1.15); }
+        }
+
 
         .checkmarks {
             color: var(--whatsapp-blue);
@@ -927,10 +962,13 @@
                     <div class="contact-status" id="headerStatus">online</div>
                 </div>
             </div>
-            <div class="header-actions">
-                <button class="icon-btn" id="liveTalkBtn" title="Voice Call">
-                    <svg viewBox="0 0 24 24"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.68.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/></svg>
+             <div class="header-actions">
+                <button class="icon-btn" id="autoSpeakBtn" title="Auto-Speak Responses">
+                    <svg viewBox="0 0 24 24"></svg>
                 </button>
+                 <button class="icon-btn" id="liveTalkBtn" title="Voice Call">
+                     <svg viewBox="0 0 24 24"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.68.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/></svg>
+                 </button>
                 <button class="icon-btn" id="updateAppBtn" title="Download Latest APK">
                     <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
                 </button>
@@ -1065,6 +1103,61 @@
         let attachedImageName = "";
         let chatMessages = [];
         let isGenerating = false;
+        const voiceBridge = window.AndroidVoiceBridge;
+
+        // Auto-Speak state & TTS handling
+        let autoSpeakEnabled = localStorage.getItem("vato_auto_speak") !== "false";
+        let activeSpeakingUtteranceId = null;
+        let activeSpeakingBtn = null;
+
+        const SPEAKER_ON_SVG = '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>';
+        const SPEAKER_OFF_SVG = '<path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27l4.66 4.66L7 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>';
+        const BUBBLE_PLAY_SVG = '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>';
+        const BUBBLE_STOP_SVG = '<path d="M6 6h12v12H6z"/>';
+
+        function stripMarkdownForTTS(text) {
+            if (!text) return "";
+            return text
+                .replace(/```[\s\S]*?```/g, " ")
+                .replace(/`([^`]+)`/g, "$1")
+                .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+                .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+                .replace(/<[^>]+>/g, "")
+                .replace(/^\|[-:\s|]+\|$/gm, " ")
+                .replace(/\|/g, " ")
+                .replace(/^#{1,6}\s+/gm, "")
+                .replace(/^>\s+/gm, "")
+                .replace(/[*_~]{1,3}/g, "")
+                .replace(/^[\s]*[-*+]\s+/gm, "")
+                .replace(/^[\s]*\d+\.\s+/gm, "")
+                .replace(/\s+/g, " ")
+                .trim();
+        }
+
+        function detectTTSLanguage(text) {
+            return /[\u0A80-\u0AFF]/.test(text) ? "gu-IN" : "en-IN";
+        }
+
+        function stopSpeech() {
+            if (voiceBridge) {
+                try { voiceBridge.stopSpeaking(); } catch(e) {}
+            }
+            if (activeSpeakingBtn) {
+                activeSpeakingBtn.classList.remove("speaking");
+                activeSpeakingBtn.innerHTML = `<svg viewBox="0 0 24 24">${BUBBLE_PLAY_SVG}</svg>`;
+                activeSpeakingBtn.title = "Speak message";
+                activeSpeakingBtn = null;
+            }
+            activeSpeakingUtteranceId = null;
+        }
+
+        function updateAutoSpeakBtnUI() {
+            const btn = document.getElementById("autoSpeakBtn");
+            if (!btn) return;
+            btn.classList.toggle("active", autoSpeakEnabled);
+            btn.innerHTML = `<svg viewBox="0 0 24 24">${autoSpeakEnabled ? SPEAKER_ON_SVG : SPEAKER_OFF_SVG}</svg>`;
+            btn.title = autoSpeakEnabled ? "Auto-Speak Responses: ON" : "Auto-Speak Responses: OFF";
+        }
 
         // Elements
         const chatContainer = document.getElementById("chat-container");
@@ -1398,8 +1491,48 @@
 
             const meta = document.createElement("div");
             meta.className = "bubble-meta";
-            meta.innerHTML = `<span>${msg.time || formatTime(new Date())}</span>` + 
-                (msg.role === 'user' ? '<span class="checkmarks">✓✓</span>' : '');
+
+            if (msg.role === 'assistant' && msg.content) {
+                const speakBtn = document.createElement("button");
+                speakBtn.className = "bubble-speak-btn";
+                speakBtn.title = "Speak message";
+                speakBtn.innerHTML = `<svg viewBox="0 0 24 24">${BUBBLE_PLAY_SVG}</svg>`;
+                speakBtn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    vibrate(15);
+                    const cleanText = stripMarkdownForTTS(msg.content);
+                    if (!cleanText) return;
+
+                    if (activeSpeakingBtn === speakBtn) {
+                        stopSpeech();
+                        return;
+                    }
+
+                    stopSpeech();
+                    const lang = detectTTSLanguage(cleanText);
+                    const utterId = "chat-bubble-" + Date.now();
+                    activeSpeakingUtteranceId = utterId;
+                    activeSpeakingBtn = speakBtn;
+                    speakBtn.classList.add("speaking");
+                    speakBtn.innerHTML = `<svg viewBox="0 0 24 24">${BUBBLE_STOP_SVG}</svg>`;
+                    speakBtn.title = "Stop speaking";
+
+                    if (voiceBridge) {
+                        try { voiceBridge.speak(cleanText, lang, utterId); } catch(err) { stopSpeech(); }
+                    }
+                });
+                meta.appendChild(speakBtn);
+            }
+
+            const timeSpan = document.createElement("span");
+            timeSpan.textContent = msg.time || formatTime(new Date());
+            meta.appendChild(timeSpan);
+            if (msg.role === 'user') {
+                const checks = document.createElement("span");
+                checks.className = "checkmarks";
+                checks.textContent = "✓✓";
+                meta.appendChild(checks);
+            }
             bubble.appendChild(meta);
 
             row.appendChild(bubble);
@@ -1571,7 +1704,7 @@
         // Send Message
         async function sendMessage() {
             if (isGenerating) return;
-
+            stopSpeech();
             const text = messageInput.value.trim();
             const image = attachedImageBase64;
 
@@ -1615,6 +1748,26 @@
                 appendMessageUI(botMsg);
                 saveChatHistory();
 
+                if (autoSpeakEnabled && replyText) {
+                    const cleanReply = stripMarkdownForTTS(replyText);
+                    if (cleanReply) {
+                        const lang = detectTTSLanguage(cleanReply);
+                        const utterId = "chat-reply-" + Date.now();
+                        stopSpeech();
+                        activeSpeakingUtteranceId = utterId;
+                        // Mark the newest assistant bubble as speaking
+                        const lastBubbleBtn = chatContainer.querySelector(".message-row.assistant:last-child .bubble-speak-btn");
+                        if (lastBubbleBtn) {
+                            activeSpeakingBtn = lastBubbleBtn;
+                            lastBubbleBtn.classList.add("speaking");
+                            lastBubbleBtn.innerHTML = `<svg viewBox="0 0 24 24">${BUBBLE_STOP_SVG}</svg>`;
+                            lastBubbleBtn.title = "Stop speaking";
+                        }
+                        if (voiceBridge) {
+                            try { voiceBridge.speak(cleanReply, lang, utterId); } catch(err) { stopSpeech(); }
+                        }
+                    }
+                }
             } catch (err) {
                 console.error("LLM Error:", err);
                 removeTypingIndicator();
@@ -1643,6 +1796,17 @@
 
         sendBtn.addEventListener("click", sendMessage);
 
+        const autoSpeakBtn = document.getElementById("autoSpeakBtn");
+        if (autoSpeakBtn) {
+            autoSpeakBtn.addEventListener("click", () => {
+                vibrate(20);
+                autoSpeakEnabled = !autoSpeakEnabled;
+                localStorage.setItem("vato_auto_speak", autoSpeakEnabled ? "true" : "false");
+                updateAutoSpeakBtnUI();
+                if (!autoSpeakEnabled) stopSpeech();
+            });
+        }
+
         // Clear Chat
         let clearChatTimer = null;
         clearChatBtn.addEventListener("click", () => {
@@ -1666,8 +1830,8 @@
 
         // Settings Modal
         settingsBtn.addEventListener("click", () => {
+            stopSpeech();
             serverUrlInput.value = serverUrl;
-            systemPromptInput.value = systemPrompt;
             testStatusMsg.className = "status-msg";
             settingsModal.classList.add("open");
         });
@@ -1770,16 +1934,17 @@
 
         // Init
         loadChatHistory();
+        updateAutoSpeakBtnUI();
         checkConnection();
         checkAppUpdate();
         window.addEventListener("resize", scrollToBottom);
 
         // ===== Voice Call Mode =====
-        const voiceBridge = window.AndroidVoiceBridge;
         const liveOverlay = document.getElementById("liveTalkOverlay");
         const liveStatus = document.getElementById("liveStatus");
         const liveCaption = document.getElementById("liveCaption");
         const liveTimerEl = document.getElementById("liveTimer");
+        // Voice bridge reference already initialized above; keep existing voiceBridge variable intact.
         const liveMuteBtn = document.getElementById("liveMuteBtn");
         let liveLang = localStorage.getItem("vato_voice_lang") || "en-IN";
         let liveActive = false;
@@ -1839,7 +2004,7 @@
             clearInterval(liveTimerInt);
             liveTimerInt = setInterval(() => { liveSeconds++; renderTimer(); }, 1000);
             liveCaption.innerHTML = "";
-            syncLiveLangUI();
+            stopSpeech();
             liveOverlay.classList.add("open");
             if (voiceBridge && voiceBridge.setCallMode) voiceBridge.setCallMode(true);
             liveGreet();
@@ -1944,12 +2109,23 @@
         };
 
         // Any utterance whose id starts with "live-" (greeting or a reply) hands the mic back when done.
+        // Handle TTS completion / errors for both live-call and chat-bubble/reply utterances
         window.__onTtsDone = function(id) {
-            if (liveActive && livePhase === "speaking" && String(id).startsWith("live-")) liveListen();
+            const sid = String(id);
+            if (liveActive && livePhase === "speaking" && sid.startsWith("live-")) {
+                liveListen();
+            } else if (activeSpeakingUtteranceId && sid === String(activeSpeakingUtteranceId)) {
+                stopSpeech();
+            }
         };
 
         window.__onTtsError = function(id, code) {
-            if (liveActive && livePhase === "speaking" && String(id).startsWith("live-")) liveListen();
+            const sid = String(id);
+            if (liveActive && livePhase === "speaking" && sid.startsWith("live-")) {
+                liveListen();
+            } else if (activeSpeakingUtteranceId && sid === String(activeSpeakingUtteranceId)) {
+                stopSpeech();
+            }
         };
     </script>
 </body>
