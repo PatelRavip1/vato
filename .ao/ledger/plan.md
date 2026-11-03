@@ -1,7 +1,7 @@
 # Plan: merge-sensevoice
 
 - [x] Step 1: Merge `ao/backend-sensevoice` into integration branch.
-- [ ] Step 2: Merge `ao/client-sensevoice` and resolve any ledger conflicts.
+- [x] Step 2: Merge `ao/client-sensevoice` and resolve any ledger conflicts.
 - [ ] Step 3: Run `cargo check` and `cargo test` in `server/`.
 - [ ] Step 4: Run `bash build.sh` to compile `vato.apk`.
 - [ ] Step 5: Install APK to running emulator (`emulator-5554`).

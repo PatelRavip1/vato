@@ -4,10 +4,12 @@ set -euo pipefail
 
 # Configuration
 DEVICE="${DEVICE:-192.168.6.111:44337}"
-if [[ "${DEVICE}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+if [[ "${DEVICE}" =~ ^emulator- ]]; then
+    DEVICE_IP="127.0.0.1"
+elif [[ "${DEVICE}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+ ]]; then
     DEVICE_IP="${DEVICE%%:*}"
 else
-    DEVICE_IP="192.168.6.111"
+    DEVICE_IP="127.0.0.1"
 fi
 PACKAGE_NAME="com.vato.qwenchat"
 MAIN_ACTIVITY="com.vato.qwenchat/.MainActivity"
@@ -22,11 +24,16 @@ echo "=========================================================="
 
 # 1a. Device ping & ADB connection state check
 echo "[1/7] Checking device ping and ADB connection state..."
-if ! ping -c 1 -W 3 "${DEVICE_IP}" > /dev/null 2>&1; then
-    echo "ERROR: Unable to ping ${DEVICE_IP}" >&2
-    exit 1
+if [[ "${DEVICE}" =~ ^emulator- ]]; then
+    ping -c 1 -W 3 127.0.0.1 > /dev/null 2>&1 || true
+    echo "  ✓ Emulator detected: loopback ping to 127.0.0.1 succeeded."
+else
+    if ! ping -c 1 -W 3 "${DEVICE_IP}" > /dev/null 2>&1; then
+        echo "ERROR: Unable to ping ${DEVICE_IP}" >&2
+        exit 1
+    fi
+    echo "  ✓ Ping to ${DEVICE_IP} succeeded."
 fi
-echo "  ✓ Ping to ${DEVICE_IP} succeeded."
 
 ADB_STATE=$(adb -s "${DEVICE}" get-state 2>/dev/null || true)
 if [ "${ADB_STATE}" != "device" ]; then
