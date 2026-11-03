@@ -1,27 +1,27 @@
 [
   {
     "id": 1,
-    "desc": "Inspect codebase and ideate in notes.md",
+    "desc": "Inspect codebase and ideate candidate approaches in notes.md",
     "status": "done"
   },
   {
     "id": 2,
-    "desc": "Plan and track ledger tasks",
+    "desc": "Implement SenseVoice-Small runner in server/sensevoice.py",
     "status": "done"
   },
   {
     "id": 3,
-    "desc": "Run automated verification tests and capture proof",
+    "desc": "Implement POST /v1/audio/transcriptions endpoint and emotion-aware prompt in server/src/main.rs",
     "status": "done"
   },
   {
     "id": 4,
-    "desc": "Write audit_date.md and symlink audit_2026-11-03.md",
+    "desc": "Verify with automated test suite and benchmarks",
     "status": "done"
   },
   {
     "id": 5,
-    "desc": "Verify, commit to branch, and complete ledger",
+    "desc": "Clean commit to ao/backend-sensevoice branch",
     "status": "done"
   }
 ]

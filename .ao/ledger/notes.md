@@ -1,15 +1,25 @@
-# Ideation Notes: audit-doc
+# Ideation Notes: backend-sensevoice
 
 ## Candidate Approaches
 
-- **Approach A (Symlinked canonical doc)**: Write comprehensive audit report to `audit_date.md` and create a relative symbolic link `audit_2026-11-03.md -> audit_date.md`. Track both in git. Canonical documentation stays in `audit_date.md` with zero duplication.
-- **Approach B (Dual identical copies)**: Write `audit_date.md` and copy it to `audit_2026-11-03.md`. Maximizes portability if checked out on filesystems that don't support symlinks, but introduces file duplication risk if updated later.
-- **Approach C (Minimal placeholder notes)**: Write minimal high-level notes without exact code snippets or command proof. Violates prompt requirements for full code audit and verification proof.
+### Approach A: Persistent Python Runner with CLI Fallback (Chosen)
+- `server/sensevoice.py` uses `sherpa-onnx` (int8 quantized SenseVoice-Small model) with `soundfile`.
+- Supports two modes:
+  1. Daemon mode (`--daemon`): Model loaded once into memory; reads audio file paths from stdin line-by-line and outputs JSON results line-by-line over stdout. Measured latency: ~30ms for 2s speech (well within <60ms requirement).
+  2. One-shot CLI mode (`sensevoice.py <audio_path>`): Direct standalone execution returning JSON.
+- `vato-proxy` maintains a thread-safe worker handle to the daemon with automatic restart and one-shot fallback.
+- Deliberate simplification: single persistent worker with mutex (`# ponytail: single worker lock, pool if concurrent STT spikes`).
 
-## Selected Approach
-Approach A (with symlink `audit_2026-11-03.md -> audit_date.md` or hardcopy fallback if needed; symlink is standard POSIX and tracked cleanly by git).
+### Approach B: Per-Request One-Shot CLI Invocation
+- Spawn `uv run --python 3.12 --with sherpa-onnx python sensevoice.py <audio>` on every request.
+- Simpler process lifecycle in Rust, but Python + ONNX model loading adds 250-400ms overhead per call, failing the <60ms requirement.
 
-## Pitfalls & Edge Cases
-- **Verification Proof Completeness**: Must capture actual command outputs (`cargo test` 5/5 passed, `build.sh` 1.4M APK created) rather than synthetic summaries.
-- **Scope Alignment**: Ensure all sub-bullets across backend (query routing, CLI delimiter, `@` prefix sanitization, `TempFilesGuard`, `MAX_BODY_SIZE`), Android (`setAllowFileAccess`, `setMixedContentMode`, `FLAG_DEBUGGABLE`, `onDestroy()` teardown, `allowBackup=false`), and frontend (`textContent`, `replace(() => block)`, `AbortSignal.timeout(30000)`, `Array.isArray()` checks, viewport meta) are documented with exact rationales.
-- **Ledger & Commit Discipline**: Keep notes under 800 words, synchronize `tasks.json` and `plan.md`, verify before committing.
+### Approach C: Pure Rust In-Process via `ort` Crate
+- Add `ort` crate and re-implement mel-filterbank feature extraction and CTC/tokenizer in Rust.
+- High complexity, requires downloading and linking native ONNX runtime C headers/libs, prone to build environment breakage.
+
+## Edge Cases & Pitfalls
+- **Audio Formats**: Client audio may arrive as multipart/form-data, raw audio/wav binary, or base64 JSON. Proxy must handle all three cleanly.
+- **Emotion Tag Normalization**: SenseVoice yields `<|HAPPY|>`, `<|SAD|>`, `<|ANGRY|>`, `<|NEUTRAL|>`, `<|Laughter|>`. These must be mapped cleanly to `[HAPPY]`, `[SAD]`, `[ANGRY]`, `[NEUTRAL]`, `[LAUGHTER]` and reflected in both `emotion` and `text` fields so UI badges and LLM system prompt observe them.
+- **Process Crash / Pipe Broken**: If Python daemon crashes or pipe closes, proxy must safely reap child, restart daemon, or fallback to one-shot execution without failing user requests.
+- **Concurrency**: Guard daemon stdin/stdout with Mutex to prevent interleaved commands.

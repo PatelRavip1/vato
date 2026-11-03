@@ -2,9 +2,9 @@ use base64::Engine;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{BufRead, BufReader, BufWriter, Read, Write};
 use std::net::{Ipv4Addr, SocketAddr, TcpListener, TcpStream};
-use std::process::Command;
+use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -93,12 +93,117 @@ struct ChatResponseMessage {
     content: String,
 }
 
+struct SenseVoiceWorker {
+    child: Child,
+    stdin: BufWriter<ChildStdin>,
+    stdout: BufReader<ChildStdout>,
+}
+
+impl Drop for SenseVoiceWorker {
+    fn drop(&mut self) {
+        let _ = self.child.kill();
+        let _ = self.child.wait();
+    }
+}
+
+impl SenseVoiceWorker {
+    fn spawn(script: &str) -> Option<Self> {
+        let mut cmd = Command::new("uv");
+        cmd.args(["run", "--python", "3.12", "--with", "sherpa-onnx", "--with", "soundfile", "python", script, "--daemon"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null());
+
+        let mut child = match cmd.spawn() {
+            Ok(c) => c,
+            Err(_) => {
+                let mut cmd_py = Command::new("python3");
+                cmd_py.args([script, "--daemon"])
+                    .stdin(Stdio::piped())
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::null());
+                cmd_py.spawn().ok()?
+            }
+        };
+
+        let stdout = child.stdout.take()?;
+        let stdin = child.stdin.take()?;
+        let mut reader = BufReader::new(stdout);
+        let writer = BufWriter::new(stdin);
+
+        let mut ready_line = String::new();
+        if reader.read_line(&mut ready_line).is_err() || !ready_line.trim().starts_with("READY") {
+            let _ = child.kill();
+            let _ = child.wait();
+            return None;
+        }
+
+        Some(Self {
+            child,
+            stdin: writer,
+            stdout: reader,
+        })
+    }
+
+    fn transcribe(&mut self, audio_path: &str) -> Result<String, String> {
+        self.stdin.write_all(audio_path.as_bytes()).map_err(|e| e.to_string())?;
+        self.stdin.write_all(b"\n").map_err(|e| e.to_string())?;
+        self.stdin.flush().map_err(|e| e.to_string())?;
+
+        let mut resp = String::new();
+        self.stdout.read_line(&mut resp).map_err(|e| e.to_string())?;
+        if resp.trim().is_empty() {
+            return Err("Empty response from SenseVoice daemon".to_string());
+        }
+        Ok(resp.trim().to_string())
+    }
+}
+
+fn get_sensevoice_script() -> String {
+    if let Ok(p) = std::env::var("SENSEVOICE_SCRIPT") {
+        if std::path::Path::new(&p).exists() {
+            return p;
+        }
+    }
+    if std::path::Path::new("server/sensevoice.py").exists() {
+        return "server/sensevoice.py".to_string();
+    }
+    if std::path::Path::new("sensevoice.py").exists() {
+        return "sensevoice.py".to_string();
+    }
+    "server/sensevoice.py".to_string()
+}
+
+fn run_sensevoice_oneshot(script: &str, audio_path: &str) -> Result<serde_json::Value, String> {
+    let out = Command::new("uv")
+        .args(["run", "--python", "3.12", "--with", "sherpa-onnx", "--with", "soundfile", "python", script, audio_path])
+        .output();
+    match out {
+        Ok(o) if o.status.success() => {
+            let s = String::from_utf8_lossy(&o.stdout);
+            serde_json::from_str(&s).map_err(|e| format!("Invalid JSON: {}", e))
+        }
+        _ => {
+            let out_py = Command::new("python3").args([script, audio_path]).output();
+            match out_py {
+                Ok(o) if o.status.success() => {
+                    let s = String::from_utf8_lossy(&o.stdout);
+                    serde_json::from_str(&s).map_err(|e| format!("Invalid JSON: {}", e))
+                }
+                Ok(o) => Err(format!("SenseVoice failed: {}", String::from_utf8_lossy(&o.stderr))),
+                Err(e) => Err(format!("Failed to execute SenseVoice: {}", e)),
+            }
+        }
+    }
+}
+
 struct AppState {
     ansi_re: Regex,
     think_re: Regex,
     think_tag_re: Regex,
     working_re: Regex,
     omp_lock: Arc<Mutex<()>>,
+    sensevoice_worker: Arc<Mutex<Option<SenseVoiceWorker>>>,
 }
 
 impl AppState {
@@ -109,6 +214,7 @@ impl AppState {
             think_tag_re: Regex::new(r"</?think>").unwrap(),
             working_re: Regex::new(r"^\s*Working\.\.\.\s*").unwrap(),
             omp_lock: Arc::new(Mutex::new(())),
+            sensevoice_worker: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -121,6 +227,31 @@ impl AppState {
         let no_think = self.think_re.replace_all(&no_working, "");
         let cleaned = self.think_tag_re.replace_all(&no_think, "");
         cleaned.trim().to_string()
+    }
+
+    fn transcribe_audio(&self, audio_path: &str) -> Result<serde_json::Value, String> {
+        // ponytail: single persistent worker with mutex, pool if concurrent STT spikes
+        let script_path = get_sensevoice_script();
+        let mut worker_guard = self.sensevoice_worker.lock().unwrap_or_else(|e| e.into_inner());
+
+        if worker_guard.is_none() {
+            *worker_guard = SenseVoiceWorker::spawn(&script_path);
+        }
+
+        if let Some(worker) = worker_guard.as_mut() {
+            match worker.transcribe(audio_path) {
+                Ok(resp_str) => {
+                    if let Ok(v) = serde_json::from_str::<serde_json::Value>(&resp_str) {
+                        return Ok(v);
+                    }
+                }
+                Err(_) => {
+                    *worker_guard = None;
+                }
+            }
+        }
+
+        run_sensevoice_oneshot(&script_path, audio_path)
     }
 }
 
@@ -224,6 +355,8 @@ Connection: close\r\n\r\n";
         "POST" => {
             if path.starts_with("/v1/chat/completions") {
                 handle_chat_completions(&mut stream, &body, &state);
+            } else if path.starts_with("/v1/audio/transcriptions") {
+                handle_audio_transcriptions(&mut stream, &body, &headers, &state);
             } else if path.starts_with("/v1/audio/speech") {
                 handle_tts(&mut stream, &body);
             } else {
@@ -441,6 +574,146 @@ impl Drop for TempFilesGuard {
         }
     }
 }
+fn extract_multipart_part(body: &[u8], boundary_marker: &[u8]) -> Option<Vec<u8>> {
+    let start_idx = body.windows(boundary_marker.len()).position(|w| w == boundary_marker)?;
+    let rest = &body[start_idx + boundary_marker.len()..];
+
+    let header_end_offset = if let Some(pos) = rest.windows(4).position(|w| w == b"\r\n\r\n") {
+        pos + 4
+    } else if let Some(pos) = rest.windows(2).position(|w| w == b"\n\n") {
+        pos + 2
+    } else {
+        return None;
+    };
+
+    let part_data = &rest[header_end_offset..];
+    let end_idx = part_data
+        .windows(boundary_marker.len())
+        .position(|w| w == boundary_marker)
+        .unwrap_or(part_data.len());
+
+    let mut data = &part_data[..end_idx];
+    if data.ends_with(b"\r\n") {
+        data = &data[..data.len() - 2];
+    } else if data.ends_with(b"\n") {
+        data = &data[..data.len() - 1];
+    }
+    if data.ends_with(b"--") {
+        data = &data[..data.len() - 2];
+    }
+    Some(data.to_vec())
+}
+
+fn extract_audio_payload(body: &[u8], headers: &[String]) -> Option<Vec<u8>> {
+    if body.is_empty() {
+        return None;
+    }
+
+    // 1. JSON payload with base64
+    if body.starts_with(b"{") {
+        if let Ok(val) = serde_json::from_slice::<serde_json::Value>(body) {
+            let b64_str = val
+                .get("file")
+                .or_else(|| val.get("audio"))
+                .and_then(|v| v.as_str());
+            if let Some(b64) = b64_str {
+                let raw_b64 = b64.split("base64,").last().unwrap_or(b64).trim();
+                if let Ok(decoded) = base64::engine::general_purpose::STANDARD.decode(raw_b64) {
+                    return Some(decoded);
+                }
+            }
+        }
+    }
+
+    // 2. Multipart form-data
+    let content_type = headers
+        .iter()
+        .find(|h| h.to_lowercase().starts_with("content-type:"));
+    let boundary_opt = content_type.and_then(|ct| {
+        let lower = ct.to_lowercase();
+        let idx = lower.find("boundary=")?;
+        let b_str = ct[idx + 9..].trim().trim_matches('"');
+        Some(b_str.to_string())
+    });
+
+    if let Some(b) = boundary_opt {
+        let boundary_marker = format!("--{}", b).into_bytes();
+        if let Some(data) = extract_multipart_part(body, &boundary_marker) {
+            return Some(data);
+        }
+    } else if body.starts_with(b"--") {
+        if let Some(line_end) = body.windows(2).position(|w| w == b"\r\n") {
+            let boundary_marker = body[..line_end].to_vec();
+            if let Some(data) = extract_multipart_part(body, &boundary_marker) {
+                return Some(data);
+            }
+        }
+    }
+
+    // 3. Raw audio binary
+    Some(body.to_vec())
+}
+
+fn handle_audio_transcriptions(
+    stream: &mut TcpStream,
+    body: &[u8],
+    headers: &[String],
+    state: &AppState,
+) {
+    let audio_bytes = match extract_audio_payload(body, headers) {
+        Some(bytes) if !bytes.is_empty() => bytes,
+        _ => {
+            send_response(
+                stream,
+                400,
+                "application/json",
+                b"{\"error\":\"Empty or invalid audio payload\"}",
+            );
+            return;
+        }
+    };
+
+    let temp_filename = format!("/tmp/vato_stt_{}.wav", uuid_v4_short());
+    let mut guard = TempFilesGuard(Vec::new());
+    if let Err(e) = std::fs::write(&temp_filename, &audio_bytes) {
+        eprintln!("[-] Failed to write temp audio file: {}", e);
+        send_response(
+            stream,
+            500,
+            "application/json",
+            b"{\"error\":\"Failed to save audio file\"}",
+        );
+        return;
+    }
+    guard.0.push(temp_filename.clone());
+
+    match state.transcribe_audio(&temp_filename) {
+        Ok(res) => {
+            let text = res.get("text").and_then(|v| v.as_str()).unwrap_or("");
+            let emotion = res
+                .get("emotion")
+                .and_then(|v| v.as_str())
+                .unwrap_or("[NEUTRAL]");
+            let clean_text = res
+                .get("clean_text")
+                .and_then(|v| v.as_str())
+                .unwrap_or(text);
+            let resp_json = serde_json::json!({
+                "text": text,
+                "emotion": emotion,
+                "clean_text": clean_text
+            });
+            let resp_bytes = serde_json::to_vec(&resp_json).unwrap_or_else(|_| b"{}".to_vec());
+            send_response(stream, 200, "application/json", &resp_bytes);
+        }
+        Err(e) => {
+            eprintln!("[-] Transcription error: {}", e);
+            let err_json = serde_json::json!({ "error": format!("Transcription failed: {}", e) });
+            let err_bytes = serde_json::to_vec(&err_json).unwrap_or_else(|_| b"{}".to_vec());
+            send_response(stream, 500, "application/json", &err_bytes);
+        }
+    }
+}
 
 fn handle_chat_completions(stream: &mut TcpStream, body: &[u8], state: &AppState) {
     let req: ChatCompletionRequest = match serde_json::from_slice(body) {
@@ -515,13 +788,16 @@ fn handle_chat_completions(stream: &mut TcpStream, body: &[u8], state: &AppState
         }
     }
 
-    let default_system = "You are Vato, an AI assistant on WhatsApp with live internet search, system tools, and rich markdown rendering.\n- Language: Always reply in English by default. Only reply in Gujarati if the user speaks or asks in Gujarati.\n- Format replies using clean Markdown (headings, lists, code blocks, tables, bold).\n- When asked for photos, images, or visual references, search for direct image URLs (e.g. Wikimedia Commons, Wikipedia, direct JPG/PNG/WebP links) and embed them inline using markdown image syntax: ![description](image_url).\n- Keep replies direct, concise, and helpful like a WhatsApp message without fluff.";
+    let default_system = "You are Vato, an AI assistant on WhatsApp with live internet search, system tools, and rich markdown rendering.\n- Language: Always reply in English by default. Only reply in Gujarati if the user speaks or asks in Gujarati.\n- Emotion awareness: The user's input may include speech emotion tags such as [HAPPY], [SAD], [ANGRY], [NEUTRAL], [LAUGHTER], [SURPRISED]. Naturally calibrate your emotional tone to match and empathetically support the user (e.g. be warm and celebratory for [HAPPY], comforting and gentle for [SAD], calm and constructive for [ANGRY], playful for [LAUGHTER]) while keeping responses concise and direct.\n- Format replies using clean Markdown (headings, lists, code blocks, tables, bold).\n- When asked for photos, images, or visual references, search for direct image URLs (e.g. Wikimedia Commons, Wikipedia, direct JPG/PNG/WebP links) and embed them inline using markdown image syntax: ![description](image_url).\n- Keep replies direct, concise, and helpful like a WhatsApp message without fluff.";
     let system_instructions = custom_system_prompt.as_deref().unwrap_or(default_system);
 
     let mut prompt_parts = Vec::new();
     prompt_parts.push(system_instructions.to_string());
     if !system_instructions.contains("Always reply in English by default") {
         prompt_parts.push("\nImportant instruction: Always reply in English by default. Only reply in Gujarati if the user speaks or asks in Gujarati.".to_string());
+    }
+    if !system_instructions.contains("Emotion awareness") {
+        prompt_parts.push("\nNote: When user messages include speech emotion tags (e.g. [HAPPY], [SAD], [ANGRY], [NEUTRAL], [LAUGHTER]), adapt your tone empathetically and contextually to their emotion while staying helpful and concise.".to_string());
     }
     if !system_instructions.contains("markdown image syntax") {
         prompt_parts.push("\nNote: The chat UI supports rendering images via Markdown syntax: ![description](image_url). When asked to show or find photos/images, search for direct image URLs and embed them directly.".to_string());
@@ -843,5 +1119,107 @@ mod tests {
         // Now the lock is released
         let try_lock_after = state.omp_lock.try_lock();
         assert!(try_lock_after.is_ok());
+    }
+
+    #[test]
+    fn test_extract_audio_payload_raw() {
+        let raw = b"RIFFfakeaudioWAVEfmt ";
+        let headers = vec!["Content-Type: audio/wav".to_string()];
+        let extracted = extract_audio_payload(raw, &headers).unwrap();
+        assert_eq!(extracted, raw);
+    }
+
+    #[test]
+    fn test_extract_audio_payload_base64_json() {
+        let raw = b"RIFFhello";
+        let b64 = base64::engine::general_purpose::STANDARD.encode(raw);
+        let json_body = format!("{{\"file\":\"data:audio/wav;base64,{}\"}}", b64);
+        let headers = vec!["Content-Type: application/json".to_string()];
+        let extracted = extract_audio_payload(json_body.as_bytes(), &headers).unwrap();
+        assert_eq!(extracted, raw);
+    }
+
+    #[test]
+    fn test_extract_audio_payload_multipart() {
+        let boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW";
+        let raw_audio = b"RIFFrealwavbytesdata";
+        let mut body = Vec::new();
+        body.extend_from_slice(format!("--{}\r\n", boundary).as_bytes());
+        body.extend_from_slice(b"Content-Disposition: form-data; name=\"file\"; filename=\"test.wav\"\r\n");
+        body.extend_from_slice(b"Content-Type: audio/wav\r\n\r\n");
+        body.extend_from_slice(raw_audio);
+        body.extend_from_slice(format!("\r\n--{}--\r\n", boundary).as_bytes());
+
+        let headers = vec![format!("Content-Type: multipart/form-data; boundary={}", boundary)];
+        let extracted = extract_audio_payload(&body, &headers).unwrap();
+        assert_eq!(extracted, raw_audio);
+    }
+
+    #[test]
+    fn test_emotion_aware_system_prompt() {
+        let req_json = r#"{"messages":[{"role":"user","content":"[HAPPY] Hello Vato!"}]}"#;
+        let req: ChatCompletionRequest = serde_json::from_str(req_json).unwrap();
+        assert_eq!(req.messages.len(), 1);
+        let default_sys = "You are Vato... Emotion awareness: The user's input may include speech emotion tags";
+        assert!(default_sys.contains("Emotion awareness"));
+    }
+
+    #[test]
+    fn test_audio_transcriptions_routing() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let state = Arc::new(AppState::new());
+
+        let state_clone = Arc::clone(&state);
+        let server_thread = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut reader = BufReader::new(stream.try_clone().unwrap());
+            let mut line = String::new();
+            reader.read_line(&mut line).unwrap();
+            let mut headers = Vec::new();
+            let mut content_length = 0;
+            loop {
+                let mut h = String::new();
+                reader.read_line(&mut h).unwrap();
+                if h.trim().is_empty() { break; }
+                if h.to_lowercase().starts_with("content-length:") {
+                    if let Some(val) = h.split(':').nth(1) {
+                        content_length = val.trim().parse::<usize>().unwrap_or(0);
+                    }
+                }
+                headers.push(h);
+            }
+            let mut body = vec![0u8; content_length];
+            if content_length > 0 {
+                reader.read_exact(&mut body).unwrap();
+            }
+            handle_audio_transcriptions(&mut stream, &body, &headers, &state_clone);
+        });
+
+        let mut client = TcpStream::connect(addr).unwrap();
+        let req = "POST /v1/audio/transcriptions HTTP/1.1\r\nContent-Length: 0\r\n\r\n";
+        client.write_all(req.as_bytes()).unwrap();
+        client.flush().unwrap();
+
+        let mut resp = String::new();
+        client.read_to_string(&mut resp).unwrap();
+        assert!(resp.starts_with("HTTP/1.1 400 Bad Request"));
+        assert!(resp.contains("Empty or invalid audio payload"));
+        server_thread.join().unwrap();
+    }
+
+    #[test]
+    fn test_sensevoice_transcribe_end_to_end() {
+        if !std::path::Path::new("/tmp/short.wav").exists() {
+            return;
+        }
+        let state = Arc::new(AppState::new());
+        let res = state.transcribe_audio("/tmp/short.wav");
+        assert!(res.is_ok(), "transcribe_audio failed: {:?}", res.err());
+        let val = res.unwrap();
+        let text = val.get("text").and_then(|v| v.as_str()).unwrap_or("");
+        let emotion = val.get("emotion").and_then(|v| v.as_str()).unwrap_or("");
+        assert!(!text.is_empty(), "Expected non-empty text");
+        assert!(!emotion.is_empty(), "Expected non-empty emotion tag");
     }
 }

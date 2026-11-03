@@ -1,7 +1,7 @@
-# Plan: audit-doc
+# Plan: backend-sensevoice
 
-- [x] Step 1: Inspect codebase and ideate in notes.md
-- [x] Step 2: Plan and track ledger tasks
-- [x] Step 3: Run automated verification tests and capture proof
-- [x] Step 4: Write audit_date.md and symlink audit_2026-11-03.md
-- [x] Step 5: Verify links and content, commit to git, update ledger
+- [x] Step 1: Inspect codebase and ideate candidate approaches in notes.md
+- [x] Step 2: Implement SenseVoice-Small runner in server/sensevoice.py
+- [x] Step 3: Implement POST /v1/audio/transcriptions endpoint and emotion-aware prompt in server/src/main.rs
+- [x] Step 4: Verify with automated test suite and benchmarks
+- [x] Step 5: Clean commit to ao/backend-sensevoice branch
