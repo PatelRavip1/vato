@@ -14,3 +14,7 @@ target/
 *.keystore
 debug.keystore
 report.md
+.ao/logs/
+.ao/messages.jsonl
+.ao/state/
+.worktrees/

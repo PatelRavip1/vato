@@ -4,7 +4,11 @@ set -euo pipefail
 
 # Configuration
 DEVICE="${DEVICE:-192.168.6.111:44337}"
-DEVICE_IP="${DEVICE%%:*}"
+if [[ "${DEVICE}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+    DEVICE_IP="${DEVICE%%:*}"
+else
+    DEVICE_IP="192.168.6.111"
+fi
 PACKAGE_NAME="com.vato.qwenchat"
 MAIN_ACTIVITY="com.vato.qwenchat/.MainActivity"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -3,7 +3,10 @@ package com.vato.qwenchat;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.media.AudioDeviceInfo;
 import android.media.AudioManager;
+import android.media.session.MediaSession;
+import android.media.session.PlaybackState;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Build;
@@ -14,6 +17,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.view.Window;
 import android.view.WindowManager;
+import android.view.KeyEvent;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Handler;
@@ -23,10 +27,14 @@ import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
+import android.speech.tts.Voice;
+import android.util.Log;
 import android.webkit.JavascriptInterface;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.Locale;
+import java.util.Set;
 
 public class MainActivity extends Activity {
     private WebView webView;
@@ -68,6 +76,12 @@ public class MainActivity extends Activity {
                 }
                 return false;
             }
+            return true;
+        }
+
+        @Override
+        public boolean onConsoleMessage(android.webkit.ConsoleMessage consoleMessage) {
+            Log.d("VatoWeb", consoleMessage.message() + " (line " + consoleMessage.lineNumber() + ")");
             return true;
         }
     }
@@ -114,6 +128,7 @@ public class MainActivity extends Activity {
         window.setNavigationBarColor(0xFF121B22);
 
 
+        WebView.setWebContentsDebuggingEnabled(true);
         webView = new WebView(this);
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -136,6 +151,7 @@ public class MainActivity extends Activity {
 
         setContentView(webView);
         webView.loadUrl("file:///android_asset/index.html");
+        setupMediaSession();
     }
 
     @Override
@@ -191,6 +207,159 @@ public class MainActivity extends Activity {
         }
         super.onBackPressed();
     }
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (mediaSession != null) {
+            mediaSession.setActive(true);
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (mediaSession != null) {
+            mediaSession.setActive(false);
+            mediaSession.release();
+            mediaSession = null;
+        }
+        super.onDestroy();
+    }
+
+    private MediaSession mediaSession;
+    private long lastHeadsetClickTime = 0;
+    private long lastPhysicalEventTime = 0;
+    private final Handler mediaHandler = new Handler(Looper.getMainLooper());
+    SingleClickRunnable pendingSingleClick = null;
+
+    static class HeadsetMediaSessionCallback extends MediaSession.Callback {
+        private final MainActivity activity;
+        HeadsetMediaSessionCallback(MainActivity activity) {
+            this.activity = activity;
+        }
+        @Override
+        public boolean onMediaButtonEvent(Intent mediaButtonIntent) {
+            if (Intent.ACTION_MEDIA_BUTTON.equals(mediaButtonIntent.getAction())) {
+                KeyEvent event = mediaButtonIntent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
+                if (event != null) {
+                    return activity.handleHeadsetKeyEvent(event);
+                }
+            }
+            return super.onMediaButtonEvent(mediaButtonIntent);
+        }
+    }
+
+    static class SingleClickRunnable implements Runnable {
+        private final MainActivity activity;
+        SingleClickRunnable(MainActivity activity) {
+            this.activity = activity;
+        }
+        @Override
+        public void run() {
+            activity.sendHeadsetClickToJs("single");
+            activity.pendingSingleClick = null;
+        }
+    }
+
+    private void setupMediaSession() {
+        try {
+            if (mediaSession != null) {
+                mediaSession.setActive(true);
+                return;
+            }
+            mediaSession = new MediaSession(this, "VatoMediaSession");
+            mediaSession.setCallback(new HeadsetMediaSessionCallback(this));
+            PlaybackState state = new PlaybackState.Builder()
+                .setActions(PlaybackState.ACTION_PLAY | PlaybackState.ACTION_PAUSE | PlaybackState.ACTION_PLAY_PAUSE | PlaybackState.ACTION_SKIP_TO_NEXT | PlaybackState.ACTION_SKIP_TO_PREVIOUS)
+                .setState(PlaybackState.STATE_PLAYING, 0, 1.0f)
+                .build();
+            mediaSession.setPlaybackState(state);
+            mediaSession.setFlags(MediaSession.FLAG_HANDLES_MEDIA_BUTTONS | MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS);
+            mediaSession.setActive(true);
+            Log.i("VatoMedia", "MediaSession registered & active for Bluetooth headsets");
+        } catch (Exception e) {
+            Log.e("VatoMedia", "setupMediaSession failed", e);
+        }
+    }
+
+    boolean handleHeadsetKeyEvent(KeyEvent event) {
+        if (event == null || event.getAction() != KeyEvent.ACTION_DOWN || event.getRepeatCount() != 0) {
+            return false;
+        }
+        long eventTime = event.getEventTime();
+        if (eventTime > 0 && eventTime == lastPhysicalEventTime) {
+            return true;
+        }
+        lastPhysicalEventTime = eventTime;
+        return handleHeadsetKeyCode(event.getKeyCode());
+    }
+
+    boolean handleHeadsetKeyCode(int keyCode) {
+        Log.i("VatoMedia", "Headset key received: " + keyCode);
+        if (keyCode == KeyEvent.KEYCODE_MEDIA_NEXT || keyCode == KeyEvent.KEYCODE_MEDIA_FAST_FORWARD || keyCode == KeyEvent.KEYCODE_ENDCALL) {
+            if (pendingSingleClick != null) {
+                mediaHandler.removeCallbacks(pendingSingleClick);
+                pendingSingleClick = null;
+            }
+            sendHeadsetClickToJs("double");
+            return true;
+        }
+
+        if (keyCode == KeyEvent.KEYCODE_HEADSETHOOK 
+                || keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE 
+                || keyCode == KeyEvent.KEYCODE_MEDIA_PLAY 
+                || keyCode == KeyEvent.KEYCODE_MEDIA_PAUSE
+                || keyCode == KeyEvent.KEYCODE_MUTE
+                || keyCode == KeyEvent.KEYCODE_VOLUME_MUTE
+                || keyCode == KeyEvent.KEYCODE_CALL) {
+            long now = System.currentTimeMillis();
+            if (now - lastHeadsetClickTime >= 80 && now - lastHeadsetClickTime < 450) {
+                lastHeadsetClickTime = 0;
+                if (pendingSingleClick != null) {
+                    mediaHandler.removeCallbacks(pendingSingleClick);
+                    pendingSingleClick = null;
+                }
+                sendHeadsetClickToJs("double");
+                return true;
+            }
+            if (now - lastHeadsetClickTime < 80) {
+                return true;
+            }
+            lastHeadsetClickTime = now;
+            if (pendingSingleClick != null) {
+                mediaHandler.removeCallbacks(pendingSingleClick);
+            }
+            pendingSingleClick = new SingleClickRunnable(this);
+            mediaHandler.postDelayed(pendingSingleClick, 320);
+            return true;
+        }
+        return false;
+    }
+
+    private void sendHeadsetClickToJs(String type) {
+        runOnUiThread(() -> {
+            if (webView != null) {
+                webView.evaluateJavascript("window.__onHeadsetClick && window.__onHeadsetClick('" + type + "')", null);
+            }
+        });
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (handleHeadsetKeyEvent(event)) {
+            return true;
+        }
+        return super.dispatchKeyEvent(event);
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (event.getRepeatCount() == 0) {
+            if (handleHeadsetKeyCode(keyCode)) {
+                return true;
+            }
+        }
+        return super.onKeyDown(keyCode, event);
+    }
 
     static class VoiceBridge {
         private final Activity activity;
@@ -244,12 +413,50 @@ public class MainActivity extends Activity {
                     tts = new TextToSpeech(activity.getApplicationContext(), status -> {
                         if (status == TextToSpeech.SUCCESS) {
                             ttsReady = true;
-                            if (pendingTtsLocale != null) tts.setLanguage(pendingTtsLocale);
+                            applyFemaleVoice(pendingTtsLocale != null ? pendingTtsLocale : new Locale("en", "IN"));
                         }
                     });
                     tts.setOnUtteranceProgressListener(new TtsListener(this));
                 } catch (Exception ignored) {}
             });
+        }
+
+        private void applyFemaleVoice(Locale locale) {
+            if (tts == null) return;
+            try {
+                tts.setLanguage(locale);
+                Set<Voice> voices = tts.getVoices();
+                if (voices != null && !voices.isEmpty()) {
+                    String targetLang = locale.getLanguage().toLowerCase(Locale.ROOT);
+                    Voice candidate = null;
+                    for (Voice v : voices) {
+                        Locale vLoc = v.getLocale();
+                        if (vLoc != null && targetLang.equals(vLoc.getLanguage().toLowerCase(Locale.ROOT))) {
+                            String name = v.getName().toLowerCase(Locale.ROOT);
+                            boolean isFemale = name.contains("guc") || name.contains("guf") || name.contains("ene") || name.contains("enc") || name.contains("end") || name.contains("cfl") || name.contains("female") || name.contains("girl") || name.contains("woman") || name.contains("-f-") || name.endsWith("-f");
+                            if (isFemale) {
+                                if (!v.isNetworkConnectionRequired()) {
+                                    candidate = v;
+                                    break;
+                                } else if (candidate == null) {
+                                    candidate = v;
+                                }
+                            }
+                        }
+                    }
+                    if (candidate != null) {
+                        tts.setVoice(candidate);
+                        Log.i("VatoTTS", "Selected female voice: " + candidate.getName());
+                    } else {
+                        Log.w("VatoTTS", "No female voice matched for " + targetLang);
+                    }
+                }
+                // Positive, upbeat, friendly girl tone
+                tts.setPitch(1.22f);
+                tts.setSpeechRate(1.05f);
+            } catch (Exception e) {
+                Log.e("VatoTTS", "applyFemaleVoice failed", e);
+            }
         }
 
         private void js(String call) {
@@ -283,6 +490,9 @@ public class MainActivity extends Activity {
                 intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
                 intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
                 intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+                intent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 2000L);
+                intent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 2000L);
+                intent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 1500L);
                 try { recognizer.startListening(intent); } catch (Exception ignored) {}
             });
         }
@@ -290,7 +500,12 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void stopListening() {
             activity.runOnUiThread(() -> {
-                if (recognizer != null) { try { recognizer.stopListening(); } catch (Exception ignored) {} }
+                if (recognizer != null) {
+                    try {
+                        recognizer.cancel();
+                        recognizer.stopListening();
+                    } catch (Exception ignored) {}
+                }
             });
         }
 
@@ -302,7 +517,7 @@ public class MainActivity extends Activity {
                 if (!ttsReady) { pendingTtsLocale = locale; return; }
                 try {
                     requestFocusForTts();
-                    tts.setLanguage(locale);
+                    applyFemaleVoice(locale);
                     tts.speak(text, TextToSpeech.QUEUE_FLUSH, utteranceBundle(utteranceId), utteranceId);
                 } catch (Exception ignored) {}
             });
@@ -325,30 +540,82 @@ public class MainActivity extends Activity {
         public boolean isTtsReady() {
             return ttsReady;
         }
+        @JavascriptInterface
+        public String getAvailableVoices(String lang) {
+            if (tts == null || !ttsReady) return "[]";
+            try {
+                Set<Voice> voices = tts.getVoices();
+                if (voices == null) return "[]";
+                Locale loc = toLocale(lang);
+                String l = loc.getLanguage().toLowerCase(Locale.ROOT);
+                JSONArray arr = new JSONArray();
+                for (Voice v : voices) {
+                    Locale vLoc = v.getLocale();
+                    if (vLoc != null && l.equals(vLoc.getLanguage().toLowerCase(Locale.ROOT))) {
+                        JSONObject obj = new JSONObject();
+                        obj.put("name", v.getName());
+                        obj.put("quality", v.getQuality());
+                        obj.put("network", v.isNetworkConnectionRequired());
+                        arr.put(obj);
+                    }
+                }
+                return arr.toString();
+            } catch (Exception e) {
+                return "[]";
+            }
+        }
+
+        @JavascriptInterface
+        public void openTtsSettings() {
+            try {
+                Intent intent = new Intent("com.android.settings.TTS_SETTINGS");
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                activity.startActivity(intent);
+            } catch (Exception e) {
+                try {
+                    Intent intent = new Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    activity.startActivity(intent);
+                } catch (Exception ignored) {}
+            }
+        }
+
+        private boolean isHeadsetConnected() {
+            if (audio == null) return false;
+            try {
+                if (audio.isBluetoothA2dpOn() || audio.isBluetoothScoOn() || audio.isWiredHeadsetOn()) {
+                    return true;
+                }
+                for (AudioDeviceInfo device : audio.getDevices(AudioManager.GET_DEVICES_OUTPUTS)) {
+                    int type = device.getType();
+                    if (type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP
+                            || type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO
+                            || type == AudioDeviceInfo.TYPE_WIRED_HEADSET
+                            || type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES
+                            || type == AudioDeviceInfo.TYPE_USB_HEADSET
+                            || type == AudioDeviceInfo.TYPE_BLE_HEADSET) {
+                        return true;
+                    }
+                }
+            } catch (Exception ignored) {}
+            return false;
+        }
 
         @JavascriptInterface
         public void setCallMode(boolean on) {
             activity.runOnUiThread(() -> {
-                ensureAudio();
-                if (audio == null) return;
-                try {
-                    if (on && !callMode) {
-                        prevMode = audio.getMode();
-                        prevSpeaker = audio.isSpeakerphoneOn();
-                        audio.setMode(AudioManager.MODE_IN_COMMUNICATION);
-                        audio.setSpeakerphoneOn(true);
-                        int max = audio.getStreamMaxVolume(AudioManager.STREAM_VOICE_CALL);
-                        int target = (int) Math.ceil(max * 0.9);
-                        if (audio.getStreamVolume(AudioManager.STREAM_VOICE_CALL) < target) {
-                            audio.setStreamVolume(AudioManager.STREAM_VOICE_CALL, target, 0);
-                        }
-                        callMode = true;
-                    } else if (!on && callMode) {
-                        audio.setSpeakerphoneOn(prevSpeaker);
-                        audio.setMode(prevMode == AudioManager.MODE_IN_COMMUNICATION ? AudioManager.MODE_NORMAL : prevMode);
-                        callMode = false;
+                if (activity instanceof MainActivity) {
+                    MainActivity act = (MainActivity) activity;
+                    if (act.mediaSession != null) {
+                        PlaybackState state = new PlaybackState.Builder()
+                            .setActions(PlaybackState.ACTION_PLAY | PlaybackState.ACTION_PAUSE | PlaybackState.ACTION_PLAY_PAUSE | PlaybackState.ACTION_SKIP_TO_NEXT | PlaybackState.ACTION_SKIP_TO_PREVIOUS)
+                            .setState(on ? PlaybackState.STATE_PLAYING : PlaybackState.STATE_PAUSED, 0, 1.0f)
+                            .build();
+                        act.mediaSession.setPlaybackState(state);
+                        act.mediaSession.setActive(true);
                     }
-                } catch (Exception ignored) {}
+                }
+                Log.i("VatoAudio", "Call mode updated: on=" + on);
             });
         }
 
@@ -360,6 +627,7 @@ public class MainActivity extends Activity {
         private Bundle utteranceBundle(String id) {
             Bundle b = new Bundle();
             b.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, id);
+            b.putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_MUSIC);
             return b;
         }
 
@@ -392,11 +660,15 @@ public class MainActivity extends Activity {
                 ArrayList<String> r = b != null ? b.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION) : null;
                 return (r != null && !r.isEmpty()) ? r.get(0) : "";
             }
-            @Override public void onReadyForSpeech(Bundle p) {}
+            @Override public void onReadyForSpeech(Bundle p) {
+                bridge.main.post(() -> bridge.js("window.__onVoiceReady && window.__onVoiceReady()"));
+            }
             @Override public void onBeginningOfSpeech() {}
             @Override public void onRmsChanged(float rms) {}
             @Override public void onBufferReceived(byte[] b) {}
-            @Override public void onEndOfSpeech() {}
+            @Override public void onEndOfSpeech() {
+                bridge.main.post(() -> bridge.js("window.__onVoiceEnd && window.__onVoiceEnd()"));
+            }
             @Override public void onError(int code) {
                 final int c = code;
                 bridge.main.post(() -> bridge.js("window.__onVoiceError && window.__onVoiceError(" + c + ")"));

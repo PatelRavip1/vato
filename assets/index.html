@@ -178,6 +178,7 @@
             width: 21px;
             height: 21px;
             fill: currentColor;
+        }
         .icon-btn.active {
             color: var(--accent-green);
         }
@@ -415,6 +416,7 @@
             color: var(--text-secondary);
             margin-top: 3px;
             user-select: none;
+        }
         .bubble-speak-btn {
             background: none;
             border: none;
@@ -668,6 +670,7 @@
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
             margin: auto;
+        }
 
         .modal-title {
             font-size: 18px;
@@ -777,131 +780,112 @@
             color: white;
         }
 
-        /* WhatsApp Voice Call screen */
+        /* Voice Call Popup (docked above text input) */
         #liveTalkOverlay {
-            position: fixed;
-            inset: 0;
-            background: radial-gradient(circle at 50% 35%, #16222b 0%, var(--bg-color) 70%);
-            z-index: 200;
             display: none;
             flex-direction: column;
-            align-items: center;
-            justify-content: space-between;
-            padding: 28px 16px calc(28px + env(safe-area-inset-bottom));
-            animation: fadeIn 0.2s;
+            gap: 8px;
+            background: #182229;
+            border-top: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+            padding: 8px 12px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.35);
+            z-index: 20;
+            flex-shrink: 0;
+            animation: slideUp 0.18s ease-out;
         }
-        #liveTalkOverlay.open { display: flex; }
-        .live-call-header {
-            width: 100%;
+        #liveTalkOverlay.open {
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
         }
-        .live-call-title { font-size: 14px; font-weight: 600; color: var(--text-secondary); }
-        .live-call-secure {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 11px;
-            color: var(--text-secondary);
+        @keyframes slideUp {
+            from { transform: translateY(10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
-        .live-call-secure svg { width: 10px; height: 10px; fill: currentColor; flex: 0 0 auto; }
-        .live-center {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 22px;
-            flex: 1;
-            justify-content: center;
-            width: 100%;
-        }
-        .live-orb {
-            position: relative;
-            width: 130px;
-            height: 130px;
+        .live-bar-top {
             display: flex;
             align-items: center;
             justify-content: center;
-        }
-        .live-orb .ring {
-            position: absolute;
-            inset: 0;
-            border-radius: 50%;
-            border: 2px solid var(--accent-green);
-            opacity: 0.4;
-            animation: livePulse 1.6s ease-out infinite;
-        }
-        .live-orb .ring.r2 { animation-delay: 0.5s; }
-        .live-orb .ring.r3 { animation-delay: 1s; }
-        .live-orb .core {
-            width: 88px;
-            height: 88px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #00a884, #128c7e);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 42px;
-            font-weight: 700;
-            color: white;
-            box-shadow: 0 0 24px rgba(0,168,132,0.45);
-        }
-        #liveTalkOverlay[data-phase="speaking"] .live-orb .core,
-        #liveTalkOverlay[data-phase="thinking"] .live-orb .core {
-            background: linear-gradient(135deg, #53bdeb, #2f8fb5);
-            box-shadow: 0 0 24px rgba(83,189,235,0.45);
-        }
-        #liveTalkOverlay[data-phase="speaking"] .ring,
-        #liveTalkOverlay[data-phase="thinking"] .ring { border-color: var(--whatsapp-blue); }
-        #liveTalkOverlay[data-phase="thinking"] .ring { animation-duration: 0.9s; }
-        @keyframes livePulse {
-            0% { transform: scale(0.9); opacity: 0.5; }
-            70% { transform: scale(1.25); opacity: 0; }
-            100% { transform: scale(1.25); opacity: 0; }
-        }
-        .live-caller-name { font-size: 22px; font-weight: 700; color: var(--text-primary); }
-        .live-timer { font-size: 14px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
-        .live-status {
+            gap: 8px;
             font-size: 13px;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            width: 100%;
+        }
+        .live-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .live-pulse-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: var(--accent-green);
+            box-shadow: 0 0 6px var(--accent-green);
+            animation: dotPulse 1.2s infinite ease-in-out;
+        }
+        #liveTalkOverlay[data-phase="speaking"] .live-pulse-dot,
+        #liveTalkOverlay[data-phase="thinking"] .live-pulse-dot {
+            background-color: var(--whatsapp-blue);
+            box-shadow: 0 0 6px var(--whatsapp-blue);
+        }
+        #liveTalkOverlay[data-phase="muted"] .live-pulse-dot {
+            background-color: #ef5350;
+            box-shadow: none;
+            animation: none;
+        }
+        @keyframes dotPulse {
+            0%, 100% { transform: scale(0.9); opacity: 0.6; }
+            50% { transform: scale(1.25); opacity: 1; }
+        }
+        .live-status {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--accent-green);
+            letter-spacing: 0.3px;
         }
         #liveTalkOverlay[data-phase="speaking"] .live-status,
-        #liveTalkOverlay[data-phase="thinking"] .live-status { color: var(--whatsapp-blue); }
-        #liveTalkOverlay[data-phase="listening"] .live-status { color: var(--accent-green); }
-        .live-caption {
-            width: 100%;
-            max-height: 26vh;
-            overflow-y: auto;
-            font-size: 14px;
-            line-height: 1.5;
-            color: var(--text-primary);
-            text-align: center;
-            white-space: pre-wrap;
+        #liveTalkOverlay[data-phase="thinking"] .live-status {
+            color: var(--whatsapp-blue);
         }
-        .live-caption .cap-user { color: var(--accent-green); display: block; margin-bottom: 6px; }
-        .live-caption .cap-ai { color: var(--whatsapp-blue); display: block; }
+        #liveTalkOverlay[data-phase="muted"] .live-status {
+            color: #ef5350;
+        }
+        .live-timer {
+            font-size: 11.5px;
+            color: var(--text-secondary);
+            font-variant-numeric: tabular-nums;
+            background: rgba(255,255,255,0.06);
+            padding: 2px 6px;
+            border-radius: 6px;
+        }
+        .live-caption {
+            flex: 1;
+            font-size: 12px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-align: right;
+        }
+        .live-caption .cap-user { color: var(--accent-green); }
+        .live-caption .cap-ai { color: var(--whatsapp-blue); }
         .live-actions {
-            width: 100%;
-            max-width: 380px;
             display: flex;
             align-items: center;
-            justify-content: space-evenly;
-            gap: 16px;
+            justify-content: space-between;
+            width: 100%;
+            gap: 10px;
         }
         .live-action {
             display: flex;
-            flex-direction: column;
             align-items: center;
             gap: 6px;
-            font-size: 11px;
+            font-size: 12px;
             color: var(--text-secondary);
         }
         .live-action-btn {
-            width: 56px;
-            height: 56px;
+            width: 38px;
+            height: 38px;
             border-radius: 50%;
             border: none;
             background: var(--input-bg);
@@ -910,14 +894,15 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
+            transition: background 0.15s, color 0.15s;
         }
-        .live-action-btn svg { width: 24px; height: 24px; fill: currentColor; }
+        .live-action-btn svg { width: 19px; height: 19px; fill: currentColor; }
         .live-action-btn.active { background: #ff3b30; color: white; }
         .live-lang-toggle {
             display: flex;
             background: var(--input-bg);
-            border-radius: 14px;
-            padding: 3px;
+            border-radius: 12px;
+            padding: 2px;
             gap: 2px;
         }
         .live-lang-toggle .lang-opt {
@@ -925,17 +910,19 @@
             background: transparent;
             color: var(--text-secondary);
             font-size: 12px;
-            padding: 6px 12px;
-            border-radius: 11px;
+            padding: 6px 14px;
+            border-radius: 10px;
             cursor: pointer;
+            transition: background 0.15s, color 0.15s;
         }
         .live-lang-toggle .lang-opt.active {
             background: var(--accent-green);
             color: white;
+            font-weight: 600;
         }
         .live-end-call {
-            width: 66px;
-            height: 66px;
+            width: 40px;
+            height: 40px;
             border: none;
             border-radius: 50%;
             background: #e5352b;
@@ -944,8 +931,9 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
+            box-shadow: 0 2px 6px rgba(229,53,43,0.35);
         }
-        .live-end-call svg { width: 30px; height: 30px; fill: currentColor; transform: rotate(135deg); }
+        .live-end-call svg { width: 20px; height: 20px; fill: currentColor; transform: rotate(135deg); }
     </style>
 </head>
 <body>
@@ -963,15 +951,9 @@
                 </div>
             </div>
              <div class="header-actions">
-                <button class="icon-btn" id="autoSpeakBtn" title="Auto-Speak Responses">
-                    <svg viewBox="0 0 24 24"></svg>
-                </button>
                  <button class="icon-btn" id="liveTalkBtn" title="Voice Call">
                      <svg viewBox="0 0 24 24"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.68.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/></svg>
                  </button>
-                <button class="icon-btn" id="updateAppBtn" title="Download Latest APK">
-                    <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
-                </button>
                 <button class="icon-btn" id="clearChatBtn" title="Clear Chat">
                     <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                 </button>
@@ -993,6 +975,30 @@
                 <button class="preview-remove-btn" id="removeImageBtn">✕</button>
             </div>
             <div class="preview-info" id="previewFileName">Image attached</div>
+        </div>
+        <!-- Voice Call Popup (docked above text input) -->
+        <div id="liveTalkOverlay" data-phase="idle">
+            <div class="live-bar-top">
+                <span class="live-pulse-dot"></span>
+                <span class="live-timer" id="liveTimer">00:00</span>
+                <span id="liveStatus" style="display:none;"></span>
+                <span id="liveCaption" style="display:none;"></span>
+            </div>
+            <div class="live-actions">
+                <div class="live-action">
+                    <button class="live-action-btn" id="liveMuteBtn" title="Mute">
+                        <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg>
+                    </button>
+                    <span>Mute</span>
+                </div>
+                <div class="live-lang-toggle">
+                    <button class="lang-opt" data-lang="en-IN">English</button>
+                    <button class="lang-opt" data-lang="gu-IN">ગુજરાતી</button>
+                </div>
+                <button class="live-end-call" id="liveEndCallBtn" title="End call">
+                    <svg viewBox="0 0 24 24"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.68.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/></svg>
+                </button>
+            </div>
         </div>
 
         <!-- Bottom Input Bar -->
@@ -1016,10 +1022,11 @@
                 
                 <div class="form-group">
                     <label class="form-label">Server Endpoint</label>
-                    <input type="text" class="form-input" id="serverUrlInput" placeholder="http://127.0.0.1:8081">
+                    <input type="text" class="form-input" id="serverUrlInput" placeholder="http://192.168.6.87:8081">
                     <div class="quick-chips">
-                        <span class="chip" onclick="setServerUrl('http://127.0.0.1:8081')">Localhost (8081)</span>
-                        <span class="chip" onclick="setServerUrl('http://10.0.2.2:8081')">Emulator (10.0.2.2:8081)</span>
+                        <span class="chip" onclick="setServerUrl('http://192.168.6.87:8081')">LAN (192.168.6.87:8081)</span>
+                        <span class="chip" onclick="setServerUrl('http://100.121.227.65:8081')">Tailscale (100.121.227.65:8081)</span>
+                        <span class="chip" onclick="setServerUrl('http://127.0.0.1:8081')">USB/Reverse (127.0.0.1:8081)</span>
                     </div>
                 </div>
 
@@ -1047,55 +1054,18 @@
         </div>
     </div>
 
-        <!-- Voice Call Overlay -->
-        <div id="liveTalkOverlay" data-phase="idle">
-            <div class="live-call-header">
-                <div class="live-call-title">WhatsApp Voice Call</div>
-                <div class="live-call-secure">
-                    <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM9 8V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9z"/></svg>
-                    <span>End-to-end encrypted</span>
-                </div>
-            </div>
-            <div class="live-center">
-                <div class="live-orb">
-                    <div class="ring"></div>
-                    <div class="ring r2"></div>
-                    <div class="ring r3"></div>
-                    <div class="core">V</div>
-                </div>
-                <div class="live-caller-name">Vato</div>
-                <div class="live-timer" id="liveTimer">00:00</div>
-                <div class="live-status" id="liveStatus">Connecting…</div>
-            </div>
-            <div class="live-caption" id="liveCaption"></div>
-            <div class="live-actions">
-                <div class="live-action">
-                    <button class="live-action-btn" id="liveMuteBtn" title="Mute">
-                        <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg>
-                    </button>
-                    <span>Mute</span>
-                </div>
-                <div class="live-lang-toggle">
-                    <button class="lang-opt" data-lang="en-IN">English</button>
-                    <button class="lang-opt" data-lang="gu-IN">ગુજરાતી</button>
-                </div>
-                <button class="live-end-call" id="liveEndCallBtn" title="End call">
-                    <svg viewBox="0 0 24 24"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.68.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/></svg>
-                </button>
-            </div>
-        </div>
 
     <script>
-        const DEFAULT_SERVER = "http://127.0.0.1:8081";
-        const DEFAULT_SYSTEM = "You are Vato, an AI assistant on WhatsApp with live internet access and rich markdown rendering.\n- Format responses using clean Markdown (headings, lists, code blocks, bold, tables).\n- When asked for photos, images, or visual references, search for direct image URLs (e.g. Wikimedia Commons, Wikipedia, direct JPG/PNG/WebP links) and embed them using markdown image syntax: ![description](image_url).\n- Keep replies direct, concise, and helpful like a WhatsApp message without fluff.";
+        const DEFAULT_SERVER = "http://192.168.6.87:8081";
+        const DEFAULT_SYSTEM = "You are Vato, an AI assistant on WhatsApp with live internet access and rich markdown rendering.\n- Always reply in English by default. Only reply in Gujarati if the user speaks or asks in Gujarati.\n- Format responses using clean Markdown (headings, lists, code blocks, bold, tables).\n- When asked for photos, images, or visual references, search for direct image URLs (e.g. Wikimedia Commons, Wikipedia, direct JPG/PNG/WebP links) and embed them using markdown image syntax: ![description](image_url).\n- Keep replies direct, concise, and helpful like a WhatsApp message without fluff.";
 
         let serverUrl = localStorage.getItem("vato_server_url") || DEFAULT_SERVER;
-        if (serverUrl === "http://127.0.0.1:8080") {
+        if (serverUrl === "http://127.0.0.1:8080" || serverUrl === "http://127.0.0.1:8081") {
             serverUrl = DEFAULT_SERVER;
             localStorage.setItem("vato_server_url", DEFAULT_SERVER);
         }
         let systemPrompt = localStorage.getItem("vato_system_prompt") || DEFAULT_SYSTEM;
-        if (systemPrompt && systemPrompt.includes("Keep all replies short, crisp, and to the point like a quick project status update")) {
+        if (!systemPrompt || !systemPrompt.includes("Always reply in English by default")) {
             systemPrompt = DEFAULT_SYSTEM;
             localStorage.setItem("vato_system_prompt", DEFAULT_SYSTEM);
         }
@@ -1105,15 +1075,7 @@
         let isGenerating = false;
         const voiceBridge = window.AndroidVoiceBridge;
 
-        // Auto-Speak state & TTS handling
-        let autoSpeakEnabled = localStorage.getItem("vato_auto_speak") !== "false";
         let activeSpeakingUtteranceId = null;
-        let activeSpeakingBtn = null;
-
-        const SPEAKER_ON_SVG = '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>';
-        const SPEAKER_OFF_SVG = '<path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27l4.66 4.66L7 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>';
-        const BUBBLE_PLAY_SVG = '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>';
-        const BUBBLE_STOP_SVG = '<path d="M6 6h12v12H6z"/>';
 
         function stripMarkdownForTTS(text) {
             if (!text) return "";
@@ -1125,11 +1087,12 @@
                 .replace(/<[^>]+>/g, "")
                 .replace(/^\|[-:\s|]+\|$/gm, " ")
                 .replace(/\|/g, " ")
-                .replace(/^#{1,6}\s+/gm, "")
+                .replace(/#{1,6}/g, "")
                 .replace(/^>\s+/gm, "")
-                .replace(/[*_~]{1,3}/g, "")
-                .replace(/^[\s]*[-*+]\s+/gm, "")
+                .replace(/[*_~]+/g, "")
+                .replace(/^[\s]*[-*+•]\s+/gm, "")
                 .replace(/^[\s]*\d+\.\s+/gm, "")
+                .replace(/[•\-\–\—]{2,}/g, " ")
                 .replace(/\s+/g, " ")
                 .trim();
         }
@@ -1138,26 +1101,85 @@
             return /[\u0A80-\u0AFF]/.test(text) ? "gu-IN" : "en-IN";
         }
 
+        const activeAudioInstances = new Set();
+        let activeAudio = null;
+
         function stopSpeech() {
+            activeSpeakingUtteranceId = null;
+            for (const a of activeAudioInstances) {
+                try {
+                    a.pause();
+                    a.currentTime = 0;
+                    a.src = "";
+                    a.load();
+                } catch(e) {}
+            }
+            activeAudioInstances.clear();
+            activeAudio = null;
+
             if (voiceBridge) {
                 try { voiceBridge.stopSpeaking(); } catch(e) {}
             }
-            if (activeSpeakingBtn) {
-                activeSpeakingBtn.classList.remove("speaking");
-                activeSpeakingBtn.innerHTML = `<svg viewBox="0 0 24 24">${BUBBLE_PLAY_SVG}</svg>`;
-                activeSpeakingBtn.title = "Speak message";
-                activeSpeakingBtn = null;
-            }
-            activeSpeakingUtteranceId = null;
+            document.querySelectorAll(".bubble-speak-btn.speaking").forEach(btn => {
+                btn.classList.remove("speaking");
+                btn.innerHTML = `<svg viewBox="0 0 24 24">${BUBBLE_PLAY_SVG}</svg>`;
+                btn.title = "Speak message";
+            });
+            activeSpeakingBtn = null;
         }
 
-        function updateAutoSpeakBtnUI() {
-            const btn = document.getElementById("autoSpeakBtn");
-            if (!btn) return;
-            btn.classList.toggle("active", autoSpeakEnabled);
-            btn.innerHTML = `<svg viewBox="0 0 24 24">${autoSpeakEnabled ? SPEAKER_ON_SVG : SPEAKER_OFF_SVG}</svg>`;
-            btn.title = autoSpeakEnabled ? "Auto-Speak Responses: ON" : "Auto-Speak Responses: OFF";
+        function playSpeech(text, lang, utteranceId) {
+            stopSpeech();
+            const cleanText = stripMarkdownForTTS(text);
+            if (!cleanText) return;
+            activeSpeakingUtteranceId = utteranceId;
+
+            // If Gujarati is requested (via call toggle or Gujarati script)
+            const isGujarati = (lang && lang.startsWith("gu")) || /[\u0A80-\u0AFF]/.test(cleanText);
+            if (isGujarati) {
+                if (voiceBridge) {
+                    try { voiceBridge.speak(cleanText, "gu-IN", utteranceId); } catch(e) { stopSpeech(); }
+                }
+                return;
+            }
+
+            // English: Use English - United Kingdom - Sonia TTS (en-GB-SoniaNeural)
+            const ttsUrl = serverUrl.replace(/\/+$/, '') + "/v1/audio/speech?text=" + encodeURIComponent(cleanText) + "&voice=en-GB-SoniaNeural";
+            const audio = new Audio(ttsUrl);
+            activeAudio = audio;
+            activeAudioInstances.add(audio);
+
+            audio.onplay = () => {
+                if (window.__onTtsStart) window.__onTtsStart(utteranceId);
+            };
+            audio.onended = () => {
+                activeAudioInstances.delete(audio);
+                if (activeAudio === audio) activeAudio = null;
+                if (window.__onTtsDone) window.__onTtsDone(utteranceId);
+            };
+            audio.onerror = () => {
+                activeAudioInstances.delete(audio);
+                if (activeAudio === audio) activeAudio = null;
+                if (activeSpeakingUtteranceId !== utteranceId) return;
+                // Fallback to native on-device TTS if server audio fails
+                if (voiceBridge) {
+                    try { voiceBridge.speak(cleanText, "en-IN", utteranceId); } catch(e) { stopSpeech(); }
+                } else {
+                    stopSpeech();
+                }
+            };
+            audio.play().catch(() => {
+                activeAudioInstances.delete(audio);
+                if (activeAudio === audio) activeAudio = null;
+                if (activeSpeakingUtteranceId !== utteranceId) return;
+                if (voiceBridge) {
+                    try { voiceBridge.speak(cleanText, "en-IN", utteranceId); } catch(e) { stopSpeech(); }
+                } else {
+                    stopSpeech();
+                }
+            });
         }
+
 
         // Elements
         const chatContainer = document.getElementById("chat-container");
@@ -1492,37 +1514,6 @@
             const meta = document.createElement("div");
             meta.className = "bubble-meta";
 
-            if (msg.role === 'assistant' && msg.content) {
-                const speakBtn = document.createElement("button");
-                speakBtn.className = "bubble-speak-btn";
-                speakBtn.title = "Speak message";
-                speakBtn.innerHTML = `<svg viewBox="0 0 24 24">${BUBBLE_PLAY_SVG}</svg>`;
-                speakBtn.addEventListener("click", (e) => {
-                    e.stopPropagation();
-                    vibrate(15);
-                    const cleanText = stripMarkdownForTTS(msg.content);
-                    if (!cleanText) return;
-
-                    if (activeSpeakingBtn === speakBtn) {
-                        stopSpeech();
-                        return;
-                    }
-
-                    stopSpeech();
-                    const lang = detectTTSLanguage(cleanText);
-                    const utterId = "chat-bubble-" + Date.now();
-                    activeSpeakingUtteranceId = utterId;
-                    activeSpeakingBtn = speakBtn;
-                    speakBtn.classList.add("speaking");
-                    speakBtn.innerHTML = `<svg viewBox="0 0 24 24">${BUBBLE_STOP_SVG}</svg>`;
-                    speakBtn.title = "Stop speaking";
-
-                    if (voiceBridge) {
-                        try { voiceBridge.speak(cleanText, lang, utterId); } catch(err) { stopSpeech(); }
-                    }
-                });
-                meta.appendChild(speakBtn);
-            }
 
             const timeSpan = document.createElement("span");
             timeSpan.textContent = msg.time || formatTime(new Date());
@@ -1748,26 +1739,6 @@
                 appendMessageUI(botMsg);
                 saveChatHistory();
 
-                if (autoSpeakEnabled && replyText) {
-                    const cleanReply = stripMarkdownForTTS(replyText);
-                    if (cleanReply) {
-                        const lang = detectTTSLanguage(cleanReply);
-                        const utterId = "chat-reply-" + Date.now();
-                        stopSpeech();
-                        activeSpeakingUtteranceId = utterId;
-                        // Mark the newest assistant bubble as speaking
-                        const lastBubbleBtn = chatContainer.querySelector(".message-row.assistant:last-child .bubble-speak-btn");
-                        if (lastBubbleBtn) {
-                            activeSpeakingBtn = lastBubbleBtn;
-                            lastBubbleBtn.classList.add("speaking");
-                            lastBubbleBtn.innerHTML = `<svg viewBox="0 0 24 24">${BUBBLE_STOP_SVG}</svg>`;
-                            lastBubbleBtn.title = "Stop speaking";
-                        }
-                        if (voiceBridge) {
-                            try { voiceBridge.speak(cleanReply, lang, utterId); } catch(err) { stopSpeech(); }
-                        }
-                    }
-                }
             } catch (err) {
                 console.error("LLM Error:", err);
                 removeTypingIndicator();
@@ -1796,16 +1767,6 @@
 
         sendBtn.addEventListener("click", sendMessage);
 
-        const autoSpeakBtn = document.getElementById("autoSpeakBtn");
-        if (autoSpeakBtn) {
-            autoSpeakBtn.addEventListener("click", () => {
-                vibrate(20);
-                autoSpeakEnabled = !autoSpeakEnabled;
-                localStorage.setItem("vato_auto_speak", autoSpeakEnabled ? "true" : "false");
-                updateAutoSpeakBtnUI();
-                if (!autoSpeakEnabled) stopSpeech();
-            });
-        }
 
         // Clear Chat
         let clearChatTimer = null;
@@ -1883,24 +1844,45 @@
             }
         });
 
-        async function checkConnection() {
+        async function pingServer(url) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 2500);
             try {
-                const endpoint = serverUrl.replace(/\/+$/, '') + "/v1/models";
-                const res = await fetch(endpoint, { method: "GET" });
-                if (res.ok) {
+                const endpoint = url.replace(/\/+$/, '') + "/v1/models";
+                const res = await fetch(endpoint, { method: "GET", signal: controller.signal });
+                clearTimeout(timer);
+                return res.ok;
+            } catch (e) {
+                clearTimeout(timer);
+                return false;
+            }
+        }
+
+        async function checkConnection() {
+            if (await pingServer(serverUrl)) {
+                headerStatus.textContent = "online";
+                headerStatus.className = "contact-status";
+                onlineDot.style.backgroundColor = "#00d95a";
+                return true;
+            }
+
+            const fallbacks = ["http://192.168.6.87:8081", "http://127.0.0.1:8081"];
+            for (const fb of fallbacks) {
+                if (fb !== serverUrl && await pingServer(fb)) {
+                    serverUrl = fb;
+                    localStorage.setItem("vato_server_url", fb);
+                    if (serverUrlInput) serverUrlInput.value = fb;
                     headerStatus.textContent = "online";
                     headerStatus.className = "contact-status";
                     onlineDot.style.backgroundColor = "#00d95a";
-                } else {
-                    headerStatus.textContent = "server error";
-                    headerStatus.className = "contact-status offline";
-                    onlineDot.style.backgroundColor = "#ef5350";
+                    return true;
                 }
-            } catch(e) {
-                headerStatus.textContent = "offline";
-                headerStatus.className = "contact-status offline";
-                onlineDot.style.backgroundColor = "#ef5350";
             }
+
+            headerStatus.textContent = "offline";
+            headerStatus.className = "contact-status offline";
+            onlineDot.style.backgroundColor = "#ef5350";
+            return false;
         }
 
         const CURRENT_VERSION = 4;
@@ -1908,9 +1890,6 @@
             const url = serverUrl.replace(/\/+$/, '') + '/vato.apk';
             window.location.href = url;
         }
-        document.getElementById('updateAppBtn').addEventListener('click', () => {
-            downloadLatestApk();
-        });
         document.getElementById('downloadApkBtn').addEventListener('click', downloadLatestApk);
 
         async function checkAppUpdate() {
@@ -1933,8 +1912,11 @@
         }
 
         // Init
+        imagePreviewTray.classList.remove("show");
+        settingsModal.classList.remove("open");
+        attachedImageBase64 = null;
+        attachedImageName = "";
         loadChatHistory();
-        updateAutoSpeakBtnUI();
         checkConnection();
         checkAppUpdate();
         window.addEventListener("resize", scrollToBottom);
@@ -1993,7 +1975,7 @@
             setLivePhase("speaking");
             const greet = LIVE_GREETINGS[liveLang] || LIVE_GREETINGS["en-IN"];
             liveCaption.innerHTML = '<span class="cap-ai">' + greet + "</span>";
-            if (voiceBridge) voiceBridge.speak(greet, liveLang, "live-greet");
+            playSpeech(greet, liveLang, "live-greet");
         }
 
         function liveStart() {
@@ -2006,31 +1988,54 @@
             liveCaption.innerHTML = "";
             stopSpeech();
             liveOverlay.classList.add("open");
+            const callBtn = document.getElementById("liveTalkBtn");
+            if (callBtn) callBtn.classList.add("active");
+            scrollToBottom();
             if (voiceBridge && voiceBridge.setCallMode) voiceBridge.setCallMode(true);
-            liveGreet();
+            liveListen();
         }
 
         window.__exitLiveTalk = function() {
             liveActive = false;
             clearInterval(liveTimerInt);
             liveTimerInt = null;
-            if (voiceBridge) { voiceBridge.stopListening(); voiceBridge.stopSpeaking(); if (voiceBridge.setCallMode) voiceBridge.setCallMode(false); }
+            stopSpeech();
+            if (voiceBridge) {
+                voiceBridge.stopListening();
+                if (voiceBridge.setCallMode) voiceBridge.setCallMode(false);
+            }
             liveOverlay.classList.remove("open");
+            const callBtn = document.getElementById("liveTalkBtn");
+            if (callBtn) callBtn.classList.remove("active");
             setLivePhase("idle");
+            scrollToBottom();
         };
 
-        document.getElementById("liveTalkBtn").addEventListener("click", () => { vibrate(25); liveStart(); });
-        document.getElementById("liveEndCallBtn").addEventListener("click", (e) => { e.stopPropagation(); window.__exitLiveTalk(); });
-        liveMuteBtn.addEventListener("click", (e) => {
+        document.getElementById("liveTalkBtn").addEventListener("click", () => {
+            vibrate(25);
+            if (liveActive) window.__exitLiveTalk(); else liveStart();
+        });
+        document.getElementById("liveEndCallBtn").addEventListener("click", (e) => {
             e.stopPropagation();
+            window.__exitLiveTalk();
+        });
+        function toggleMute() {
             liveMuted = !liveMuted;
             liveMuteBtn.classList.toggle("active", liveMuted);
             if (liveMuted) {
-                if (voiceBridge) { voiceBridge.stopSpeaking(); voiceBridge.stopListening(); }
+                stopSpeech();
+                if (voiceBridge) voiceBridge.stopListening();
                 setLivePhase("muted");
+                playBeep("stop");
             } else {
+                playBeep("start");
                 liveListen();
             }
+        }
+
+        liveMuteBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            toggleMute();
         });
         document.querySelectorAll("#liveTalkOverlay .lang-opt").forEach(b =>
             b.addEventListener("click", (e) => {
@@ -2039,17 +2044,17 @@
                 localStorage.setItem("vato_voice_lang", liveLang);
                 syncLiveLangUI();
                 if (liveActive && livePhase !== "thinking") {
-                    if (livePhase === "speaking" && voiceBridge) voiceBridge.stopSpeaking();
-                    if (liveMuted) liveGreet(); else liveListen();
+                    if (livePhase === "speaking") stopSpeech();
+                    if (liveMuted) setLivePhase("muted"); else liveListen();
                 }
             }));
 
         // Barge-in: tap the overlay (outside its controls) while Vato talks/thinks -> stop + listen.
         liveOverlay.addEventListener("click", (e) => {
-            if (!liveActive) { liveStart(); return; }
+            if (!liveActive) return;
             if (e.target.closest(".lang-opt, .live-action-btn, .live-end-call")) return;
             if (livePhase === "speaking" || livePhase === "thinking") {
-                if (voiceBridge) voiceBridge.stopSpeaking();
+                stopSpeech();
                 liveListen();
             }
         });
@@ -2061,8 +2066,27 @@
             }
         };
 
+        function isEndCallPhrase(text) {
+            if (!text) return false;
+            const norm = text.toLowerCase().trim().replace(/[.,!?;:'"()]/g, "");
+            if (/\b(end call|end the call|hang up|cut the call|stop call|stop the call|disconnect call|bye-bye|goodbye)\b/.test(norm)) {
+                return true;
+            }
+            if (norm === "end call" || norm === "hang up" || norm === "bye" || norm === "stop") {
+                return true;
+            }
+            if (/(કૉલ કાપો|કૉલ પૂરો કરો|કૉલ કટ કરો|ફોન મૂકો|કૉલ બંધ કરો|બંધ કરો)/.test(norm)) {
+                return true;
+            }
+            return false;
+        }
+
         window.__onVoicePartial = function(t) {
             if (liveActive && livePhase === "listening") {
+                if (isEndCallPhrase(t)) {
+                    window.__exitLiveTalk();
+                    return;
+                }
                 const ai = liveCaption.querySelector(".cap-ai");
                 liveCaption.innerHTML = '<span class="cap-user">' + t.replace(/</g, "&lt;") + "</span>" + (ai ? ai.outerHTML : "");
             }
@@ -2072,9 +2096,13 @@
             if (!liveActive || livePhase !== "listening") return;
             const text = (t || "").trim();
             if (!text) { liveListen(); return; }
+            if (isEndCallPhrase(text)) {
+                window.__exitLiveTalk();
+                return;
+            }
             const userMsg = { role: "user", content: text, time: formatTime(new Date()) };
             chatMessages.push(userMsg);
-            appendMessageUI(userMsg, false);
+            appendMessageUI(userMsg, true);
             saveChatHistory();
             liveCaption.innerHTML = '<span class="cap-user">' + text.replace(/</g, "&lt;") + "</span>";
             setLivePhase("thinking");
@@ -2084,12 +2112,13 @@
                     if (!liveActive || livePhase !== "thinking") return;
                     const botMsg = { role: "assistant", content: reply, time: formatTime(new Date()) };
                     chatMessages.push(botMsg);
-                    appendMessageUI(botMsg, false);
+                    appendMessageUI(botMsg, true);
                     saveChatHistory();
                     liveCaption.innerHTML += '<span class="cap-ai">' + reply.replace(/</g, "&lt;") + "</span>";
                     liveUtterCount++;
                     setLivePhase("speaking");
-                    if (voiceBridge) voiceBridge.speak(reply, liveLang, "live-" + liveUtterCount);
+                    const cleanReply = stripMarkdownForTTS(reply);
+                    playSpeech(cleanReply, liveLang, "live-" + liveUtterCount);
                 } catch (err) {
                     liveCaption.innerHTML += '<span class="cap-ai">⚠️ ' + String(err.message).replace(/</g, "&lt;") + "</span>";
                     liveListen();
@@ -2099,12 +2128,15 @@
 
         window.__onVoiceError = function(code) {
             if (!liveActive || liveMuted) return;
-            // 6 = speech timeout (silence), 7 = no match -> just keep listening.
-            if (code === 6 || code === 7) { liveListen(); return; }
+            // 6 = speech timeout (silence), 7 = no match -> debounce and keep listening
+            if (code === 6 || code === 7) {
+                setTimeout(() => { if (liveActive && !liveMuted && livePhase === "listening") liveListen(); }, 200);
+                return;
+            }
             if (livePhase === "listening") {
                 const ai = liveCaption.querySelector(".cap-ai");
                 liveCaption.innerHTML = (ai ? ai.outerHTML : "") + '<span class="cap-ai">⚠️ ' + (liveLang.startsWith("gu") ? "ઓળખ થઈ નહીં" : "Didn't catch that") + "</span>";
-                liveListen();
+                setTimeout(() => { if (liveActive && !liveMuted) liveListen(); }, 250);
             }
         };
 
@@ -2125,6 +2157,59 @@
                 liveListen();
             } else if (activeSpeakingUtteranceId && sid === String(activeSpeakingUtteranceId)) {
                 stopSpeech();
+            }
+        };
+        window.__onHeadsetClick = function(type) {
+            vibrate(30);
+            if (!liveActive) {
+                liveStart();
+                return;
+            }
+            if (type === "double") {
+                window.__exitLiveTalk();
+            } else if (type === "single") {
+                toggleMute();
+            }
+        };
+        let audioCtx = null;
+        function playBeep(type) {
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtx) return;
+                if (!audioCtx) audioCtx = new AudioCtx();
+                if (audioCtx.state === "suspended") audioCtx.resume();
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                if (type === "start") {
+                    osc.frequency.setValueAtTime(480, now);
+                    osc.frequency.exponentialRampToValueAtTime(760, now + 0.12);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+                    osc.start(now);
+                    osc.stop(now + 0.14);
+                } else if (type === "stop") {
+                    osc.frequency.setValueAtTime(640, now);
+                    osc.frequency.exponentialRampToValueAtTime(380, now + 0.12);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+                    osc.start(now);
+                    osc.stop(now + 0.14);
+                }
+            } catch(e) {}
+        }
+
+        window.__onVoiceReady = function() {
+            if (liveActive && livePhase === "listening") {
+                playBeep("start");
+            }
+        };
+
+        window.__onVoiceEnd = function() {
+            if (liveActive && livePhase === "listening") {
+                playBeep("stop");
             }
         };
     </script>

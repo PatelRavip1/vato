@@ -222,6 +222,8 @@ Connection: close\r\n\r\n";
         "POST" => {
             if path.starts_with("/v1/chat/completions") {
                 handle_chat_completions(&mut stream, &body, &state);
+            } else if path.starts_with("/v1/audio/speech") {
+                handle_tts(&mut stream, &body);
             } else {
                 send_response(&mut stream, 404, "text/plain", b"Not Found");
             }
@@ -305,8 +307,118 @@ Connection: close\r\n\r\n",
         }
         return;
     }
+    if path.starts_with("/v1/audio/speech") {
+        if is_head {
+            send_head_response(stream, 200, "audio/mpeg", 0);
+        } else {
+            handle_tts_get(stream, path);
+        }
+        return;
+    }
 
     send_response(stream, 404, "text/plain", b"Not Found");
+}
+
+#[derive(Deserialize, Debug)]
+struct TtsRequest {
+    input: Option<String>,
+    text: Option<String>,
+    voice: Option<String>,
+}
+
+fn url_decode(s: &str) -> String {
+    let mut out = Vec::new();
+    let bytes = s.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            if let Ok(val) = u8::from_str_radix(std::str::from_utf8(&bytes[i + 1..=i + 2]).unwrap_or("00"), 16) {
+                out.push(val);
+                i += 3;
+                continue;
+            }
+        } else if bytes[i] == b'+' {
+            out.push(b' ');
+            i += 1;
+            continue;
+        }
+        out.push(bytes[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).to_string()
+}
+
+fn generate_speech(text: &str, voice: Option<&str>) -> Result<Vec<u8>, String> {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Err("Empty text".to_string());
+    }
+    let voice_name = voice.unwrap_or("en-GB-SoniaNeural");
+    let edge_bin = if std::path::Path::new("/home/ravi/.local/bin/edge-tts").exists() {
+        "/home/ravi/.local/bin/edge-tts"
+    } else {
+        "edge-tts"
+    };
+
+    let output = Command::new(edge_bin)
+        .arg("--voice").arg(voice_name)
+        .arg("--text").arg(trimmed)
+        .output()
+        .map_err(|e| format!("Failed to spawn edge-tts: {}", e))?;
+
+    if !output.status.success() {
+        let err_msg = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("edge-tts failed: {}", err_msg));
+    }
+    Ok(output.stdout)
+}
+
+fn handle_tts(stream: &mut TcpStream, body: &[u8]) {
+    let req: TtsRequest = match serde_json::from_slice(body) {
+        Ok(r) => r,
+        Err(_) => {
+            send_response(stream, 400, "application/json", b"{\"error\":\"Invalid JSON\"}");
+            return;
+        }
+    };
+    let text = req.input.or(req.text).unwrap_or_default();
+    match generate_speech(&text, req.voice.as_deref()) {
+        Ok(audio_bytes) => {
+            send_response(stream, 200, "audio/mpeg", &audio_bytes);
+        }
+        Err(e) => {
+            eprintln!("[-] TTS error: {}", e);
+            send_response(stream, 500, "application/json", format!("{{\"error\":\"{}\"}}", e).as_bytes());
+        }
+    }
+}
+
+fn handle_tts_get(stream: &mut TcpStream, path: &str) {
+    let mut text = String::new();
+    let mut voice = None;
+    if let Some(pos) = path.find('?') {
+        let query = &path[pos + 1..];
+        for pair in query.split('&') {
+            let mut parts = pair.splitn(2, '=');
+            if let (Some(k), Some(v)) = (parts.next(), parts.next()) {
+                let decoded = url_decode(v);
+                if k == "text" || k == "input" {
+                    text = decoded;
+                } else if k == "voice" {
+                    voice = Some(decoded);
+                }
+            }
+        }
+    }
+    match generate_speech(&text, voice.as_deref()) {
+        Ok(audio_bytes) => {
+            send_response(stream, 200, "audio/mpeg", &audio_bytes);
+        }
+        Err(e) => {
+            eprintln!("[-] TTS error: {}", e);
+            send_response(stream, 500, "application/json", format!("{{\"error\":\"{}\"}}", e).as_bytes());
+        }
+    }
 }
 
 fn handle_chat_completions(stream: &mut TcpStream, body: &[u8], state: &AppState) {
@@ -382,11 +494,14 @@ fn handle_chat_completions(stream: &mut TcpStream, body: &[u8], state: &AppState
         }
     }
 
-    let default_system = "You are Vato, an AI assistant on WhatsApp with live internet search, system tools, and rich markdown rendering.\n- Format replies using clean Markdown (headings, lists, code blocks, tables, bold).\n- When asked for photos, images, or visual references, search for direct image URLs (e.g. Wikimedia Commons, Wikipedia, direct JPG/PNG/WebP links) and embed them inline using markdown image syntax: ![description](image_url).\n- Keep replies direct, concise, and helpful like a WhatsApp message without fluff.";
+    let default_system = "You are Vato, an AI assistant on WhatsApp with live internet search, system tools, and rich markdown rendering.\n- Language: Always reply in English by default. Only reply in Gujarati if the user speaks or asks in Gujarati.\n- Format replies using clean Markdown (headings, lists, code blocks, tables, bold).\n- When asked for photos, images, or visual references, search for direct image URLs (e.g. Wikimedia Commons, Wikipedia, direct JPG/PNG/WebP links) and embed them inline using markdown image syntax: ![description](image_url).\n- Keep replies direct, concise, and helpful like a WhatsApp message without fluff.";
     let system_instructions = custom_system_prompt.as_deref().unwrap_or(default_system);
 
     let mut prompt_parts = Vec::new();
     prompt_parts.push(system_instructions.to_string());
+    if !system_instructions.contains("Always reply in English by default") {
+        prompt_parts.push("\nImportant instruction: Always reply in English by default. Only reply in Gujarati if the user speaks or asks in Gujarati.".to_string());
+    }
     if !system_instructions.contains("markdown image syntax") {
         prompt_parts.push("\nNote: The chat UI supports rendering images via Markdown syntax: ![description](image_url). When asked to show or find photos/images, search for direct image URLs and embed them directly.".to_string());
     }
