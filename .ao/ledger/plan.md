@@ -1,6 +1,6 @@
 # Plan: merge-sensevoice
 
-- [ ] Step 1: Merge `ao/backend-sensevoice` into integration branch.
+- [x] Step 1: Merge `ao/backend-sensevoice` into integration branch.
 - [ ] Step 2: Merge `ao/client-sensevoice` and resolve any ledger conflicts.
 - [ ] Step 3: Run `cargo check` and `cargo test` in `server/`.
 - [ ] Step 4: Run `bash build.sh` to compile `vato.apk`.
