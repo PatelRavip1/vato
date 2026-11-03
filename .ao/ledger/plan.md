@@ -1,7 +1,9 @@
-# Plan: audit-doc
+# Plan: merge-sensevoice
 
-- [x] Step 1: Inspect codebase and ideate in notes.md
-- [x] Step 2: Plan and track ledger tasks
-- [x] Step 3: Run automated verification tests and capture proof
-- [x] Step 4: Write audit_date.md and symlink audit_2026-11-03.md
-- [x] Step 5: Verify links and content, commit to git, update ledger
+- [ ] Step 1: Merge `ao/backend-sensevoice` into integration branch.
+- [ ] Step 2: Merge `ao/client-sensevoice` and resolve any ledger conflicts.
+- [ ] Step 3: Run `cargo check` and `cargo test` in `server/`.
+- [ ] Step 4: Run `bash build.sh` to compile `vato.apk`.
+- [ ] Step 5: Install APK to running emulator (`emulator-5554`).
+- [ ] Step 6: Execute `DEVICE=emulator-5554 bash tests/test_mobile_app.sh` and ensure all 7 verification steps pass.
+- [ ] Step 7: Update `master` branch cleanly and finalize ledger.

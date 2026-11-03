@@ -1,15 +1,30 @@
-# Ideation Notes: audit-doc
+# Ideation Notes: merge-sensevoice
 
 ## Candidate Approaches
 
-- **Approach A (Symlinked canonical doc)**: Write comprehensive audit report to `audit_date.md` and create a relative symbolic link `audit_2026-11-03.md -> audit_date.md`. Track both in git. Canonical documentation stays in `audit_date.md` with zero duplication.
-- **Approach B (Dual identical copies)**: Write `audit_date.md` and copy it to `audit_2026-11-03.md`. Maximizes portability if checked out on filesystems that don't support symlinks, but introduces file duplication risk if updated later.
-- **Approach C (Minimal placeholder notes)**: Write minimal high-level notes without exact code snippets or command proof. Violates prompt requirements for full code audit and verification proof.
+- **Approach A (Sequential Git Merge & Ledger Consolidation - Recommended)**:
+  1. Merge `ao/backend-sensevoice` into `ao/merge-sensevoice` (clean merge, no code conflict).
+  2. Merge `ao/client-sensevoice` into `ao/merge-sensevoice` (conflict limited to `.ao/ledger/*`).
+  3. Resolve ledger conflict by checking out / committing integration ledger tracking the combined SenseVoice capability.
+  4. Run `cargo check` and `cargo test` in `server/`.
+  5. Run `bash build.sh` to produce `vato.apk`.
+  6. Install on emulator (`adb -s emulator-5554 install -r vato.apk`) and run `DEVICE=emulator-5554 bash tests/test_mobile_app.sh` (verify all 7 steps).
+  7. Update `master` to reflect the integrated commit.
+
+- **Approach B (Octopus Merge)**:
+  Attempt `git merge ao/backend-sensevoice ao/client-sensevoice`.
+  Downside: Git octopus merge refuses to resolve conflicts automatically when `.ao/ledger/*` differs across heads, requiring abort and fallback to sequential merge.
+
+- **Approach C (Cherry-pick / Rebase onto master)**:
+  Cherry-pick commits `67c0176` and `d29ed80`.
+  Downside: Loses true merge commit ancestry and branch topology; deviates from standard integration PR/merge practice.
 
 ## Selected Approach
-Approach A (with symlink `audit_2026-11-03.md -> audit_date.md` or hardcopy fallback if needed; symlink is standard POSIX and tracked cleanly by git).
+Approach A: Clean sequential merge preserving commit history, explicit ledger conflict resolution, followed by the full verification suite (server cargo tests, APK build, emulator installation, and 7-step E2E test).
 
 ## Pitfalls & Edge Cases
-- **Verification Proof Completeness**: Must capture actual command outputs (`cargo test` 5/5 passed, `build.sh` 1.4M APK created) rather than synthetic summaries.
-- **Scope Alignment**: Ensure all sub-bullets across backend (query routing, CLI delimiter, `@` prefix sanitization, `TempFilesGuard`, `MAX_BODY_SIZE`), Android (`setAllowFileAccess`, `setMixedContentMode`, `FLAG_DEBUGGABLE`, `onDestroy()` teardown, `allowBackup=false`), and frontend (`textContent`, `replace(() => block)`, `AbortSignal.timeout(30000)`, `Array.isArray()` checks, viewport meta) are documented with exact rationales.
-- **Ledger & Commit Discipline**: Keep notes under 800 words, synchronize `tasks.json` and `plan.md`, verify before committing.
+- **Ledger Conflicts**: Both feature branches touched `.ao/ledger/*`. Must resolve cleanly without dropping integration ledger state.
+- **Server Dependencies**: Verify `server/src/main.rs` and `server/Cargo.toml` compile cleanly without missing crates or broken types.
+- **Android Asset Packaging**: Ensure `assets/index.html` changes from `client-sensevoice` package properly into `vato.apk`.
+- **Emulator UI Readiness**: Emulator `emulator-5554` must be unlocked and responsive to `adb shell input` for `tests/test_mobile_app.sh` 7-step assertions.
+- **Master Branch Synchronization**: Root repo `/home/ravi/projects/server/vato` has `master` checked out. Must cleanly fast-forward/update `master` once verified.

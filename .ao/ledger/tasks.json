@@ -1,27 +1,32 @@
 [
   {
     "id": 1,
-    "desc": "Inspect codebase and ideate in notes.md",
-    "status": "done"
+    "desc": "Merge ao/backend-sensevoice into integration branch",
+    "status": "todo"
   },
   {
     "id": 2,
-    "desc": "Plan and track ledger tasks",
-    "status": "done"
+    "desc": "Merge ao/client-sensevoice and resolve ledger conflicts",
+    "status": "todo"
   },
   {
     "id": 3,
-    "desc": "Run automated verification tests and capture proof",
-    "status": "done"
+    "desc": "Run cargo check and cargo test in server/",
+    "status": "todo"
   },
   {
     "id": 4,
-    "desc": "Write audit_date.md and symlink audit_2026-11-03.md",
-    "status": "done"
+    "desc": "Build vato.apk using bash build.sh",
+    "status": "todo"
   },
   {
     "id": 5,
-    "desc": "Verify, commit to branch, and complete ledger",
-    "status": "done"
+    "desc": "Install APK to emulator-5554 and run 7-step E2E verification",
+    "status": "todo"
+  },
+  {
+    "id": 6,
+    "desc": "Synchronize master branch and complete ledger documentation",
+    "status": "todo"
   }
 ]
