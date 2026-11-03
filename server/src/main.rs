@@ -413,8 +413,8 @@ Connection: close\r\n\r\n",
 
     if route == "/version" {
         let version_info = VersionInfo {
-            version_code: 4,
-            version_name: "1.3.0",
+            version_code: 5,
+            version_name: "1.4.0",
         };
         let json_bytes = serde_json::to_vec(&version_info).unwrap_or_default();
         if is_head {
@@ -1034,7 +1034,7 @@ mod tests {
         let mut response = String::new();
         client.read_to_string(&mut response).unwrap();
         assert!(response.starts_with("HTTP/1.1 200 OK"));
-        assert!(response.contains("1.3.0"));
+        assert!(response.contains("1.4.0"));
 
         // Test /download?v=1
         let mut client2 = TcpStream::connect(addr).unwrap();
