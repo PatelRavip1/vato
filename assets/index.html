@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Vato</title>
     <style>
         @font-face {
@@ -1003,12 +1003,12 @@
 
         <!-- Bottom Input Bar -->
         <footer>
-            <input type="file" id="fileInput" accept="image/*" style="display: none;">
+            <input type="file" id="fileInput" accept="image/*" style="display: none;" aria-label="Attach file">
             <div class="input-pill">
                 <button class="pill-attach-btn" id="attachBtn" title="Attach Image">
                     <svg viewBox="0 0 24 24"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5a2.5 2.5 0 0 1 5 0v10.5c0 .83-.67 1.5-1.5 1.5s-1.5-.67-1.5-1.5V6H9v9.5a3 3 0 0 0 6 0V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/></svg>
                 </button>
-                <textarea id="messageInput" placeholder="Message" rows="1"></textarea>
+                <textarea id="messageInput" placeholder="Message" rows="1" aria-label="Message"></textarea>
             </div>
             <button class="send-btn" id="sendBtn" title="Send">
                 <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
@@ -1022,7 +1022,7 @@
                 
                 <div class="form-group">
                     <label class="form-label">Server Endpoint</label>
-                    <input type="text" class="form-input" id="serverUrlInput" placeholder="http://192.168.6.87:8081">
+                    <input type="text" class="form-input" id="serverUrlInput" placeholder="http://192.168.6.87:8081" aria-label="Server Endpoint">
                     <div class="quick-chips">
                         <span class="chip" onclick="setServerUrl('http://192.168.6.87:8081')">LAN (192.168.6.87:8081)</span>
                         <span class="chip" onclick="setServerUrl('http://100.121.227.65:8081')">Tailscale (100.121.227.65:8081)</span>
@@ -1032,7 +1032,7 @@
 
                 <div class="form-group">
                     <label class="form-label">System Prompt (Short Updates)</label>
-                    <textarea class="form-textarea" id="systemPromptInput" rows="3"></textarea>
+                    <textarea class="form-textarea" id="systemPromptInput" rows="3" aria-label="System Prompt"></textarea>
                 </div>
 
                 <div id="testStatusMsg" class="status-msg"></div>
@@ -1238,6 +1238,9 @@
             if (saved) {
                 try {
                     chatMessages = JSON.parse(saved);
+                    if (!Array.isArray(chatMessages)) {
+                        chatMessages = [];
+                    }
                     renderAllMessages();
                     return;
                 } catch(e) {}
@@ -1270,6 +1273,9 @@
         }
 
         function renderAllMessages() {
+            if (!Array.isArray(chatMessages)) {
+                chatMessages = [];
+            }
             chatContainer.innerHTML = '<div class="date-pill">Today</div>';
             chatMessages.forEach(msg => appendMessageUI(msg, false));
             scrollToBottom();
@@ -1438,7 +1444,7 @@
                     const indent = taskMatch[1].length;
                     const style = indent > 0 ? ` style="margin-left:${indent * 8}px"` : '';
                     const checked = taskMatch[2].toLowerCase() === 'x' ? 'checked' : '';
-                    out.push(`<li class="task-item"${style}><input type="checkbox" ${checked} disabled> ${inlineFormat(taskMatch[3])}</li>`);
+                    out.push(`<li class="task-item"${style}><input type="checkbox" ${checked} disabled aria-label="Task item"> ${inlineFormat(taskMatch[3])}</li>`);
                     continue;
                 }
 
@@ -1482,7 +1488,7 @@
 
             let result = out.join("");
             codeBlocks.forEach((block, idx) => {
-                result = result.replace(`\u0000CODE${idx}\u0000`, block);
+                result = result.replace(`\u0000CODE${idx}\u0000`, () => block);
             });
 
             return result;
@@ -1663,7 +1669,8 @@
                             messages: apiMessages,
                             temperature: 0.7,
                             max_tokens: 1024
-                        })
+                        }),
+                        signal: AbortSignal.timeout(30000)
                     });
                     if (response.ok) break;
                 } catch (e) {
@@ -1701,6 +1708,7 @@
 
             if (!text && !image) return;
             isGenerating = true;
+            sendBtn.disabled = true;
             vibrate(30);
             // Reset inputs
             messageInput.value = "";
@@ -1751,9 +1759,7 @@
                     content: `⚠️ Failed to reach local model at ${serverUrl}.\nCheck that vato-proxy is active on your host. (${err.message})`,
                     time: formatTime(new Date())
                 };
-                chatMessages.push(errorMsg);
                 appendMessageUI(errorMsg);
-                saveChatHistory();
 
                 setTimeout(() => {
                     headerStatus.textContent = "online";
@@ -1762,6 +1768,7 @@
                 }, 5000);
             } finally {
                 isGenerating = false;
+                sendBtn.disabled = false;
             }
         }
 
@@ -1820,10 +1827,11 @@
             testStatusMsg.className = "status-msg";
             testStatusMsg.textContent = "Testing connection...";
             testStatusMsg.style.display = "block";
+            testConnBtn.disabled = true;
 
             try {
                 const endpoint = url.replace(/\/+$/, '') + "/v1/models";
-                const res = await fetch(endpoint, { method: "GET" });
+                const res = await fetch(endpoint, { method: "GET", signal: AbortSignal.timeout(30000) });
                 if (res.ok) {
                     const data = await res.json();
                     let modelName = "llama.cpp";
@@ -1841,6 +1849,8 @@
             } catch(e) {
                 testStatusMsg.className = "status-msg error";
                 testStatusMsg.textContent = `Connection failed: ${e.message}`;
+            } finally {
+                testConnBtn.disabled = false;
             }
         });
 
@@ -1903,7 +1913,7 @@
                         banner.style.backgroundColor = '#005c4b';
                         banner.style.color = '#fff';
                         banner.style.cursor = 'pointer';
-                        banner.innerHTML = `⬇️ Update v${data.versionName || data.versionCode} available! Tap to download`;
+                        banner.textContent = `⬇️ Update v${data.versionName || data.versionCode} available! Tap to download`;
                         banner.onclick = downloadLatestApk;
                         chatContainer.insertBefore(banner, chatContainer.children[1] || null);
                     }
