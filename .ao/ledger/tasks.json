@@ -6,22 +6,22 @@
   },
   {
     "id": 2,
-    "desc": "Implement Auto-Speak toggle, stripMarkdownForTTS, auto-TTS, and bubble speak in assets/index.html",
+    "desc": "Plan and track ledger tasks",
     "status": "done"
   },
   {
     "id": 3,
-    "desc": "Automated verification test of markdown cleaner & logic",
+    "desc": "Run automated verification tests and capture proof",
     "status": "done"
   },
   {
     "id": 4,
-    "desc": "Build APK using ./build.sh and install via adb",
+    "desc": "Write audit_date.md and symlink audit_2026-11-03.md",
     "status": "done"
   },
   {
     "id": 5,
-    "desc": "Commit changes",
+    "desc": "Verify, commit to branch, and complete ledger",
     "status": "done"
   }
 ]

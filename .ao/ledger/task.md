@@ -1,38 +1,24 @@
-# Task: auto-speak
+# Task: audit-doc
 
-Implement Auto-Speak toggle and bubble speak in regular chat interface (assets/index.html) so users can type or voice-dictate via Gboard in Gujarati/English and automatically hear the assistant's response via Android TextToSpeech.
-
-# Context & Interfaces
-- Root: /home/ravi/projects/vato
-- Android bridge: window.AndroidVoiceBridge is exposed by src/com/vato/qwenchat/MainActivity.java.
-  Available JS methods:
-  - voiceBridge.speak(text, lang, utteranceId) (lang: 'gu-IN' or 'en-IN')
-  - voiceBridge.stopSpeaking()
-  - voiceBridge.isTtsReady()
-  - Global callbacks: window.__onTtsDone(id) and window.__onTtsError(id, code).
-- UI file: assets/index.html
-  - Header actions: #liveTalkBtn (WhatsApp Voice Call button), #updateAppBtn.
-  - Chat loop: sendMessage() handles user message submission, calls /v1/chat/completions, appends assistant bubble (botMsg), and saves to history.
-  - Bubble rendering: appendMessageUI(msg, scroll).
-
-# Requirements
-1. Auto-Speak Toggle in Header:
-   - Add a speaker toggle button in .header-actions beside #liveTalkBtn with a clean SVG speaker icon (speaker-with-sound waves when ON, speaker-muted when OFF).
-   - Tooltip / title: 'Auto-Speak Responses'.
-   - State persisted in localStorage under key vato_auto_speak (default true). Clicking toggles state and immediately calls voiceBridge.stopSpeaking() if turning off.
-2. Auto-TTS on AI Response:
-   - In sendMessage(), after assistant message is received and rendered:
-     If autoSpeakEnabled is true, trigger voiceBridge.speak(cleanText, lang, 'chat-reply-' + Date.now()).
-   - Language detection: if cleanText contains Gujarati Unicode characters [\u0A80-\u0AFF], set lang = 'gu-IN', else 'en-IN'.
-   - Text cleaning: write helper function stripMarkdownForTTS(text) to remove Markdown syntax (code blocks, backticks, bold/italics markers, table pipes, markdown links [text](url) -> text, image links ![alt](url) -> empty, raw HTML tags) and collapse whitespace so TTS reads natural conversational speech.
-3. Bubble Speak Button:
-   - On assistant message bubbles (.message-row.assistant .bubble), add a subtle speak icon button allowing manual tap-to-speak or tap-to-stop for that specific bubble.
-4. Interruption / Stop Speaking:
-   - When the user sends a new message or switches screens / opens Live Call mode, call voiceBridge.stopSpeaking().
-5. Ledger & Verification:
-   - Use .ao/ledger/ (task.md, plan.md, notes.md, tasks.json) to track progress.
-   - Run ./build.sh to compile, DEX, and package vato.apk.
-   - Check adb devices -l and install the newly built APK onto the connected phone:
-     adb -s 192.168.6.111:44337 install -r vato.apk
-   - Verify Success from the installation.
-   - Commit changes to the worktree branch.
+Create audit_date.md (and symlink or copy to audit_2026-11-03.md for date stamp: 2026-11-03) in the root of vato documenting the full code audit and remediation details:
+1. Executive Summary & Audit Date (2026-11-03).
+2. Backend Proxy Audit & Fixes (server/src/main.rs, server/Cargo.toml):
+   - Query routing fix (split_once('?'))
+   - CLI flag injection delimiter ('--') and '@' sanitization
+   - Mutex concurrency guard around OMP
+   - Multi-image leak cleanup and body pre-allocation bounds
+3. Android Host & Security (MainActivity.java, AndroidManifest.xml):
+   - Disabled setAllowFileAccess and setMixedContentMode
+   - Gated web debugging behind FLAG_DEBUGGABLE
+   - Full onDestroy() teardown (webView, TTS, SpeechRecognizer, file chooser reset)
+   - android:allowBackup set to false
+4. Frontend Chat UI (assets/index.html):
+   - Safe textContent update banner (XSS fix)
+   - Markdown codeblock '$' token regex corruption fix
+   - AbortSignal.timeout(30000) fetch deadlock prevention
+   - Array.isArray() chat history guard and error bubble isolation
+   - Viewport zoom accessibility restoration
+5. Verification Proof:
+   - cargo check / cargo test results (5 passed)
+   - build.sh APK build results
+Commit audit_date.md to the branch and update .ao/ledger/.

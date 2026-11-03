@@ -1,8 +1,7 @@
-# Plan: Auto-Speak and Bubble Speak
+# Plan: audit-doc
 
-- [x] Step 1: Inspect codebase and ideate candidate approaches in notes.md
-- [x] Step 2: Implement Auto-Speak toggle, markdown cleaning, auto-TTS, and bubble speak button in assets/index.html
-- [x] Step 3: Run self-verifying test script (Node.js/Bun) for TTS markdown stripping & language detection logic
-- [x] Step 4: Build APK with ./build.sh
-- [x] Step 5: Install APK to device (adb -s 192.168.6.111:44337 install -r vato.apk) and verify
-- [x] Step 6: Commit changes to worktree branch
+- [x] Step 1: Inspect codebase and ideate in notes.md
+- [x] Step 2: Plan and track ledger tasks
+- [x] Step 3: Run automated verification tests and capture proof
+- [x] Step 4: Write audit_date.md and symlink audit_2026-11-03.md
+- [x] Step 5: Verify links and content, commit to git, update ledger
