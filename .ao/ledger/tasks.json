@@ -1,27 +1,37 @@
 [
   {
     "id": 1,
-    "desc": "Inspect codebase and ideate in notes.md",
+    "desc": "Ideate candidate approaches and write .ao/ledger/notes.md",
     "status": "done"
   },
   {
     "id": 2,
-    "desc": "Plan and track ledger tasks",
+    "desc": "Update tests/test_mobile_app.sh for emulator-5554 support",
     "status": "done"
   },
   {
     "id": 3,
-    "desc": "Run automated verification tests and capture proof",
+    "desc": "Implement AudioRecord recording and /v1/audio/transcriptions routing in MainActivity.java",
     "status": "done"
   },
   {
     "id": 4,
-    "desc": "Write audit_date.md and symlink audit_2026-11-03.md",
+    "desc": "Implement audio routing and emotion badge rendering in assets/index.html",
     "status": "done"
   },
   {
     "id": 5,
-    "desc": "Verify, commit to branch, and complete ledger",
+    "desc": "Compile APK with ./build.sh and install on emulator-5554",
+    "status": "done"
+  },
+  {
+    "id": 6,
+    "desc": "Run tests/test_mobile_app.sh and verify all 7 steps pass",
+    "status": "done"
+  },
+  {
+    "id": 7,
+    "desc": "Commit cleanly to branch and finalize ledger",
     "status": "done"
   }
 ]

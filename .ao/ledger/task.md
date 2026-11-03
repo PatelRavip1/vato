@@ -1,24 +1,16 @@
-# Task: audit-doc
+# Task: client-sensevoice
 
-Create audit_date.md (and symlink or copy to audit_2026-11-03.md for date stamp: 2026-11-03) in the root of vato documenting the full code audit and remediation details:
-1. Executive Summary & Audit Date (2026-11-03).
-2. Backend Proxy Audit & Fixes (server/src/main.rs, server/Cargo.toml):
-   - Query routing fix (split_once('?'))
-   - CLI flag injection delimiter ('--') and '@' sanitization
-   - Mutex concurrency guard around OMP
-   - Multi-image leak cleanup and body pre-allocation bounds
-3. Android Host & Security (MainActivity.java, AndroidManifest.xml):
-   - Disabled setAllowFileAccess and setMixedContentMode
-   - Gated web debugging behind FLAG_DEBUGGABLE
-   - Full onDestroy() teardown (webView, TTS, SpeechRecognizer, file chooser reset)
-   - android:allowBackup set to false
-4. Frontend Chat UI (assets/index.html):
-   - Safe textContent update banner (XSS fix)
-   - Markdown codeblock '$' token regex corruption fix
-   - AbortSignal.timeout(30000) fetch deadlock prevention
-   - Array.isArray() chat history guard and error bubble isolation
-   - Viewport zoom accessibility restoration
-5. Verification Proof:
-   - cargo check / cargo test results (5 passed)
-   - build.sh APK build results
-Commit audit_date.md to the branch and update .ao/ledger/.
+You are the Android & UI Client Worker for Vato.
+Target files: assets/index.html, src/com/vato/qwenchat/MainActivity.java, tests/test_mobile_app.sh.
+Goal: Support voice audio with SenseVoice transcription and verify on emulator:
+1. Android & UI Integration:
+   - In assets/index.html and MainActivity.java: Ensure audio recorded from user is routed to /v1/audio/transcriptions on vato-proxy.
+   - Render emotion badges (e.g. [HAPPY], [ANGRY], [SAD], etc.) in the chat UI when present in transcription.
+2. Emulator & Test Runner:
+   - Update tests/test_mobile_app.sh to support DEVICE="emulator-5554" (bypass ICMP ping or ping 127.0.0.1 when DEVICE is emulator).
+   - Compile APK with .
+   - Install APK on running emulator via Performing Streamed Install.
+   - Run  and ensure all 7 verification steps pass.
+3. Ledger & verification:
+   - Maintain worktree ledger at .ao/ledger/ (task.md, plan.md, notes.md, tasks.json).
+   - Commit cleanly to your branch.

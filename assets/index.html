@@ -216,6 +216,70 @@
             letter-spacing: 0.5px;
         }
 
+        /* SenseVoice Emotion Badges */
+        .emotion-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 2px 7px;
+            border-radius: 10px;
+            margin: 0 4px 2px 0;
+            vertical-align: middle;
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-primary);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+            line-height: 1.4;
+        }
+        .emotion-badge .emotion-icon {
+            font-size: 12px;
+            line-height: 1;
+        }
+        .emotion-badge.emotion-happy {
+            background: rgba(0, 217, 90, 0.15);
+            color: #00d95a;
+            border-color: rgba(0, 217, 90, 0.35);
+        }
+        .emotion-badge.emotion-sad {
+            background: rgba(83, 189, 235, 0.15);
+            color: #53bdeb;
+            border-color: rgba(83, 189, 235, 0.35);
+        }
+        .emotion-badge.emotion-angry {
+            background: rgba(239, 83, 80, 0.15);
+            color: #ef5350;
+            border-color: rgba(239, 83, 80, 0.35);
+        }
+        .emotion-badge.emotion-neutral {
+            background: rgba(134, 150, 160, 0.15);
+            color: #8696a0;
+            border-color: rgba(134, 150, 160, 0.35);
+        }
+        .emotion-badge.emotion-fearful {
+            background: rgba(186, 104, 200, 0.15);
+            color: #ba68c8;
+            border-color: rgba(186, 104, 200, 0.35);
+        }
+        .emotion-badge.emotion-disgusted {
+            background: rgba(161, 136, 127, 0.15);
+            color: #a1887f;
+            border-color: rgba(161, 136, 127, 0.35);
+        }
+        .emotion-badge.emotion-surprised {
+            background: rgba(255, 183, 77, 0.15);
+            color: #ffb74d;
+            border-color: rgba(255, 183, 77, 0.35);
+        }
+        .emotion-badge.emotion-laughter {
+            background: rgba(255, 215, 0, 0.15);
+            color: #ffd700;
+            border-color: rgba(255, 215, 0, 0.35);
+        }
+
         /* Message Bubbles */
         .message-row {
             display: flex;
@@ -1074,6 +1138,33 @@
         let chatMessages = [];
         let isGenerating = false;
         const voiceBridge = window.AndroidVoiceBridge;
+        if (voiceBridge && voiceBridge.setServerUrl) voiceBridge.setServerUrl(serverUrl);
+
+        async function routeAudioToTranscription(audioBlob) {
+            const url = serverUrl.replace(/\/+$/, '') + "/v1/audio/transcriptions";
+            const res = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "audio/wav" },
+                body: audioBlob,
+                signal: AbortSignal.timeout(15000)
+            });
+            if (!res.ok) throw new Error("Transcription HTTP " + res.status);
+            return await res.json();
+        }
+
+        function renderEmotionBadges(str) {
+            if (!str) return "";
+            return str.replace(/\[(HAPPY|SAD|ANGRY|NEUTRAL|FEARFUL|DISGUSTED|SURPRISED|LAUGHTER|CRY|COUGH|SING|SPEECH|MUSIC)\]/gi, (match, emo) => {
+                const e = emo.toUpperCase();
+                const emojiMap = {
+                    "HAPPY": "😊", "SAD": "😢", "ANGRY": "😠", "NEUTRAL": "😐",
+                    "FEARFUL": "😨", "DISGUSTED": "🤢", "SURPRISED": "😲", "LAUGHTER": "😂",
+                    "CRY": "😭", "COUGH": "😷", "SING": "🎶", "SPEECH": "🗣️", "MUSIC": "🎵"
+                };
+                const icon = emojiMap[e] || "🏷️";
+                return `<span class="emotion-badge emotion-${e.toLowerCase()}"><span class="emotion-icon">${icon}</span> ${e}</span>`;
+            });
+        }
 
         let activeSpeakingUtteranceId = null;
 
@@ -1084,6 +1175,7 @@
                 .replace(/`([^`]+)`/g, "$1")
                 .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
                 .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+                .replace(/\[(HAPPY|SAD|ANGRY|NEUTRAL|FEARFUL|DISGUSTED|SURPRISED|LAUGHTER|CRY|COUGH|SING|SPEECH|MUSIC)\]/gi, "")
                 .replace(/<[^>]+>/g, "")
                 .replace(/^\|[-:\s|]+\|$/gm, " ")
                 .replace(/\|/g, " ")
@@ -1322,6 +1414,7 @@
                 s = s.replace(/!\[([^\]]*)\]\((https?:\/\/[^\s\)]+)\)/g, '<img src="$2" alt="$1">');
                 s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
                 s = s.replace(/(^|[\s(])(https?:\/\/[^\s)<]+)/g, '$1<a href="$2" target="_blank" rel="noopener noreferrer">$2</a>');
+                s = renderEmotionBadges(s);
                 return s;
             }
 
@@ -1508,6 +1601,10 @@
                 img.src = msg.image;
                 imgWrap.appendChild(img);
                 bubble.appendChild(imgWrap);
+            }
+
+            if (msg.emotion && msg.content && !/\[[A-Za-z]+\]/.test(msg.content)) {
+                msg.content = `[${msg.emotion.toUpperCase()}] ${msg.content}`;
             }
 
             if (msg.content) {
@@ -1817,6 +1914,7 @@
             systemPrompt = systemPromptInput.value.trim() || DEFAULT_SYSTEM;
             localStorage.setItem("vato_server_url", serverUrl);
             localStorage.setItem("vato_system_prompt", systemPrompt);
+            if (voiceBridge && voiceBridge.setServerUrl) voiceBridge.setServerUrl(serverUrl);
             settingsModal.classList.remove("open");
             checkConnection();
         });
@@ -1882,6 +1980,7 @@
                     serverUrl = fb;
                     localStorage.setItem("vato_server_url", fb);
                     if (serverUrlInput) serverUrlInput.value = fb;
+                    if (voiceBridge && voiceBridge.setServerUrl) voiceBridge.setServerUrl(serverUrl);
                     headerStatus.textContent = "online";
                     headerStatus.className = "contact-status";
                     onlineDot.style.backgroundColor = "#00d95a";
@@ -1978,7 +2077,10 @@
             if (!liveActive) return;
             if (liveMuted) { setLivePhase("muted"); return; }
             setLivePhase("listening");
-            if (voiceBridge) voiceBridge.startListening(liveLang);
+            if (voiceBridge) {
+                if (voiceBridge.setServerUrl) voiceBridge.setServerUrl(serverUrl);
+                voiceBridge.startListening(liveLang, serverUrl);
+            }
         }
 
         function liveGreet() {
@@ -2102,19 +2204,22 @@
             }
         };
 
-        window.__onVoiceFinal = function(t) {
+        window.__onVoiceFinal = function(t, emo) {
             if (!liveActive || livePhase !== "listening") return;
-            const text = (t || "").trim();
-            if (!text) { liveListen(); return; }
+            let text = (t || "").trim();
+            if (!text && !emo) { liveListen(); return; }
             if (isEndCallPhrase(text)) {
                 window.__exitLiveTalk();
                 return;
             }
-            const userMsg = { role: "user", content: text, time: formatTime(new Date()) };
+            if (emo && !/\[[A-Za-z]+\]/.test(text)) {
+                text = `[${emo.toUpperCase()}] ${text}`.trim();
+            }
+            const userMsg = { role: "user", content: text, emotion: emo, time: formatTime(new Date()) };
             chatMessages.push(userMsg);
             appendMessageUI(userMsg, true);
             saveChatHistory();
-            liveCaption.innerHTML = '<span class="cap-user">' + text.replace(/</g, "&lt;") + "</span>";
+            liveCaption.innerHTML = '<span class="cap-user">' + renderEmotionBadges(text.replace(/</g, "&lt;")) + "</span>";
             setLivePhase("thinking");
             (async () => {
                 try {
