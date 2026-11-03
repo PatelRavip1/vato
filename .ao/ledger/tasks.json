@@ -12,21 +12,21 @@
   {
     "id": 3,
     "desc": "Run cargo check and cargo test in server/",
-    "status": "todo"
+    "status": "done"
   },
   {
     "id": 4,
     "desc": "Build vato.apk using bash build.sh",
-    "status": "todo"
+    "status": "done"
   },
   {
     "id": 5,
     "desc": "Install APK to emulator-5554 and run 7-step E2E verification",
-    "status": "todo"
+    "status": "done"
   },
   {
     "id": 6,
     "desc": "Synchronize master branch and complete ledger documentation",
-    "status": "todo"
+    "status": "done"
   }
 ]
