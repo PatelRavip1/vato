@@ -5,7 +5,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{Ipv4Addr, SocketAddr, TcpListener, TcpStream};
 use std::process::Command;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const DEFAULT_PORT: u16 = 8081;
@@ -98,6 +98,7 @@ struct AppState {
     think_re: Regex,
     think_tag_re: Regex,
     working_re: Regex,
+    omp_lock: Arc<Mutex<()>>,
 }
 
 impl AppState {
@@ -107,6 +108,7 @@ impl AppState {
             think_re: Regex::new(r"(?s)<think>.*?</think>").unwrap(),
             think_tag_re: Regex::new(r"</?think>").unwrap(),
             working_re: Regex::new(r"^\s*Working\.\.\.\s*").unwrap(),
+            omp_lock: Arc::new(Mutex::new(())),
         }
     }
 
@@ -235,7 +237,8 @@ Connection: close\r\n\r\n";
 }
 
 fn handle_get(stream: &mut TcpStream, path: &str, is_head: bool) {
-    if path == "/vato.apk" || path == "/download" || path == "/update" {
+    let route = path.split_once('?').map(|(p, _)| p).unwrap_or(path);
+    if route == "/vato.apk" || route == "/download" || route == "/update" {
         let apk_path = match get_apk_path() {
             Some(p) => p,
             None => {
@@ -275,7 +278,7 @@ Connection: close\r\n\r\n",
         return;
     }
 
-    if path == "/version" {
+    if route == "/version" {
         let version_info = VersionInfo {
             version_code: 4,
             version_name: "1.3.0",
@@ -289,7 +292,7 @@ Connection: close\r\n\r\n",
         return;
     }
 
-    if path == "/v1/models" {
+    if route == "/v1/models" {
         let models = ModelsList {
             object: "list",
             data: vec![ModelItem {
@@ -307,7 +310,7 @@ Connection: close\r\n\r\n",
         }
         return;
     }
-    if path.starts_with("/v1/audio/speech") {
+    if route.starts_with("/v1/audio/speech") {
         if is_head {
             send_head_response(stream, 200, "audio/mpeg", 0);
         } else {
@@ -421,6 +424,24 @@ fn handle_tts_get(stream: &mut TcpStream, path: &str) {
     }
 }
 
+fn sanitize_user_msg(msg: &str) -> String {
+    if msg.starts_with('@') {
+        format!(" {}", msg)
+    } else {
+        msg.to_string()
+    }
+}
+
+struct TempFilesGuard(Vec<String>);
+
+impl Drop for TempFilesGuard {
+    fn drop(&mut self) {
+        for path in &self.0 {
+            let _ = std::fs::remove_file(path);
+        }
+    }
+}
+
 fn handle_chat_completions(stream: &mut TcpStream, body: &[u8], state: &AppState) {
     let req: ChatCompletionRequest = match serde_json::from_slice(body) {
         Ok(r) => r,
@@ -433,7 +454,7 @@ fn handle_chat_completions(stream: &mut TcpStream, body: &[u8], state: &AppState
 
     let mut history_lines = Vec::new();
     let mut last_user_text = String::new();
-    let mut temp_image_path: Option<String> = None;
+    let mut temp_images = TempFilesGuard(Vec::new());
     let mut custom_system_prompt: Option<String> = None;
 
     let total_msgs = req.messages.len();
@@ -478,7 +499,7 @@ fn handle_chat_completions(stream: &mut TcpStream, body: &[u8], state: &AppState
                                                 if let Ok(decoded) = base64::engine::general_purpose::STANDARD.decode(b64) {
                                                     let temp_filename = format!("/tmp/vato_{}.jpg", &uuid_v4_short());
                                                     if std::fs::write(&temp_filename, &decoded).is_ok() {
-                                                        temp_image_path = Some(temp_filename);
+                                                        temp_images.0.push(temp_filename);
                                                     }
                                                 }
                                             }
@@ -511,18 +532,21 @@ fn handle_chat_completions(stream: &mut TcpStream, body: &[u8], state: &AppState
         prompt_parts.push(format!("\nRecent Conversation:\n{}", recent));
     }
 
-    let user_msg = if !last_user_text.is_empty() {
+    let raw_user_msg = if !last_user_text.is_empty() {
         last_user_text.as_str()
     } else {
         "Describe this image."
     };
+    let user_msg = sanitize_user_msg(raw_user_msg);
     prompt_parts.push(format!("\nUser: {}", user_msg));
 
-    let full_prompt = prompt_parts.join("\n");
+    let mut full_prompt = prompt_parts.join("\n");
+    if full_prompt.starts_with('@') {
+        full_prompt = format!(" {}", full_prompt);
+    }
 
     let omp_bin = get_omp_bin();
     let model = std::env::var("VATO_MODEL").unwrap_or_else(|_| "unqwen".to_string());
-    println!("[*] Dispatching query to OMP ({}): '{}'", model, user_msg);
 
     let mut cmd = Command::new(&omp_bin);
     cmd.arg("-p")
@@ -530,20 +554,24 @@ fn handle_chat_completions(stream: &mut TcpStream, body: &[u8], state: &AppState
     if let Ok(ext) = std::env::var("OMP_EXTENSION") {
         cmd.arg("-e").arg(ext);
     }
-    if let Some(img_path) = &temp_image_path {
+    for img_path in &temp_images.0 {
         cmd.arg(format!("@{}", img_path));
     }
+    cmd.arg("--");
     cmd.arg(&full_prompt);
 
-    let output = match cmd.output() {
+    let output = {
+        let _guard = state.omp_lock.lock().unwrap_or_else(|e| e.into_inner());
+        println!("[*] Dispatching query to OMP ({}): '{}'", model, user_msg);
+        cmd.output()
+    };
+
+    let output = match output {
         Ok(out) => out,
         Err(e) => {
             eprintln!("[-] Failed to execute OMP: {}", e);
             let err_reply = format!("Error running model: {}", e);
             send_chat_response(stream, &err_reply);
-            if let Some(img_path) = &temp_image_path {
-                let _ = std::fs::remove_file(img_path);
-            }
             return;
         }
     };
@@ -557,10 +585,6 @@ fn handle_chat_completions(stream: &mut TcpStream, body: &[u8], state: &AppState
     }
     if clean_reply.is_empty() {
         clean_reply = "Done.".to_string();
-    }
-
-    if let Some(img_path) = &temp_image_path {
-        let _ = std::fs::remove_file(img_path);
     }
 
     send_chat_response(stream, &clean_reply);
@@ -714,5 +738,110 @@ fn main() {
     println!("[+] Vato Rust Proxy is ready and listening.");
     for h in handles {
         let _ = h.join();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_path_query_routing() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        // Test /version?t=1
+        let mut client = TcpStream::connect(addr).unwrap();
+        let (mut server, _) = listener.accept().unwrap();
+        handle_get(&mut server, "/version?t=1", false);
+        drop(server);
+        let mut response = String::new();
+        client.read_to_string(&mut response).unwrap();
+        assert!(response.starts_with("HTTP/1.1 200 OK"));
+        assert!(response.contains("1.3.0"));
+
+        // Test /download?v=1
+        let mut client2 = TcpStream::connect(addr).unwrap();
+        let (mut server2, _) = listener.accept().unwrap();
+        handle_get(&mut server2, "/download?v=1", false);
+        drop(server2);
+        let mut response2_bytes = Vec::new();
+        client2.read_to_end(&mut response2_bytes).unwrap();
+        let response2 = String::from_utf8_lossy(&response2_bytes);
+        assert!(response2.contains("200 OK") || response2.ends_with("\r\n\r\nAPK Not Found"));
+        assert!(!response2.ends_with("\r\n\r\nNot Found"));
+
+        // Test unmatched path
+        let mut client3 = TcpStream::connect(addr).unwrap();
+        let (mut server3, _) = listener.accept().unwrap();
+        handle_get(&mut server3, "/nonexistent?foo=bar", false);
+        drop(server3);
+        let mut response3 = String::new();
+        client3.read_to_string(&mut response3).unwrap();
+        assert!(response3.contains("404 Not Found"));
+    }
+
+    #[test]
+    fn test_user_msg_sanitization() {
+        assert_eq!(sanitize_user_msg("@etc/passwd"), " @etc/passwd");
+        assert_eq!(sanitize_user_msg("@image.png"), " @image.png");
+        assert_eq!(sanitize_user_msg("hello @world"), "hello @world");
+        assert_eq!(sanitize_user_msg("plain text"), "plain text");
+        assert_eq!(sanitize_user_msg(""), "");
+    }
+
+    #[test]
+    fn test_temp_files_guard_cleanup_on_drop() {
+        let tmp1 = format!("/tmp/test_vato_guard_drop_{}_1.jpg", uuid_v4_short());
+        let tmp2 = format!("/tmp/test_vato_guard_drop_{}_2.jpg", uuid_v4_short());
+        std::fs::write(&tmp1, b"test1").unwrap();
+        std::fs::write(&tmp2, b"test2").unwrap();
+        assert!(std::path::Path::new(&tmp1).exists());
+        assert!(std::path::Path::new(&tmp2).exists());
+
+        {
+            let mut guard = TempFilesGuard(Vec::new());
+            guard.0.push(tmp1.clone());
+            guard.0.push(tmp2.clone());
+        } // guard drops here
+
+        assert!(!std::path::Path::new(&tmp1).exists());
+        assert!(!std::path::Path::new(&tmp2).exists());
+    }
+
+    #[test]
+    fn test_temp_files_guard_cleanup_on_panic() {
+        let tmp = format!("/tmp/test_vato_guard_panic_{}.jpg", uuid_v4_short());
+        std::fs::write(&tmp, b"panic-test").unwrap();
+        assert!(std::path::Path::new(&tmp).exists());
+
+        let _ = std::panic::catch_unwind(|| {
+            let mut guard = TempFilesGuard(Vec::new());
+            guard.0.push(tmp.clone());
+            panic!("simulated panic");
+        });
+
+        assert!(!std::path::Path::new(&tmp).exists());
+    }
+
+    #[test]
+    fn test_concurrency_lock() {
+        let state = Arc::new(AppState::new());
+        let state_clone = Arc::clone(&state);
+
+        let handle = std::thread::spawn(move || {
+            let _guard = state_clone.omp_lock.lock().unwrap();
+            std::thread::sleep(Duration::from_millis(50));
+        });
+
+        std::thread::sleep(Duration::from_millis(10));
+        // The lock is held by the worker thread
+        let try_lock_result = state.omp_lock.try_lock();
+        assert!(try_lock_result.is_err());
+
+        handle.join().unwrap();
+        // Now the lock is released
+        let try_lock_after = state.omp_lock.try_lock();
+        assert!(try_lock_after.is_ok());
     }
 }
