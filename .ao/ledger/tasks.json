@@ -1,17 +1,17 @@
 [
   {
     "id": 1,
-    "desc": "Merge ao/backend-sensevoice into integration branch",
+    "desc": "Inspect codebase and ideate in notes.md",
     "status": "done"
   },
   {
     "id": 2,
-    "desc": "Merge ao/client-sensevoice and resolve ledger conflicts",
+    "desc": "Update AndroidManifest.xml (versionCode 5, versionName 1.4.0)",
     "status": "done"
   },
   {
     "id": 3,
-    "desc": "Run cargo check and cargo test in server/",
+    "desc": "Update assets/index.html UI version string and CURRENT_VERSION",
     "status": "done"
   },
   {
@@ -21,12 +21,12 @@
   },
   {
     "id": 5,
-    "desc": "Install APK to emulator-5554 and run 7-step E2E verification",
+    "desc": "Install APK to emulator-5554 and verify with dumpsys and test_mobile_app.sh",
     "status": "done"
   },
   {
     "id": 6,
-    "desc": "Synchronize master branch and complete ledger documentation",
+    "desc": "Commit changes cleanly to master",
     "status": "done"
   }
 ]
