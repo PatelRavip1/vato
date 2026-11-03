@@ -20,6 +20,7 @@ import android.view.WindowManager;
 import android.view.KeyEvent;
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.content.pm.ApplicationInfo;
 import android.os.Handler;
 import android.os.Looper;
 import android.speech.RecognitionListener;
@@ -128,15 +129,17 @@ public class MainActivity extends Activity {
         window.setNavigationBarColor(0xFF121B22);
 
 
-        WebView.setWebContentsDebuggingEnabled(true);
+        if ((getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+            WebView.setWebContentsDebuggingEnabled(true);
+        }
         webView = new WebView(this);
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
-        settings.setAllowFileAccess(true);
+        settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(true);
         settings.setDatabaseEnabled(true);
-        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setUseWideViewPort(true);
         settings.setLoadWithOverviewMode(true);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
@@ -217,10 +220,22 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (uploadMessage != null) {
+            uploadMessage.onReceiveValue(null);
+            uploadMessage = null;
+        }
         if (mediaSession != null) {
             mediaSession.setActive(false);
             mediaSession.release();
             mediaSession = null;
+        }
+        if (voiceBridge != null) {
+            voiceBridge.destroy();
+            voiceBridge = null;
+        }
+        if (webView != null) {
+            webView.destroy();
+            webView = null;
         }
         super.onDestroy();
     }
@@ -367,7 +382,7 @@ public class MainActivity extends Activity {
         private TextToSpeech tts;
         private boolean ttsReady = false;
         private Locale pendingTtsLocale = null;
-        private SpeechRecognizer recognizer;
+        private SpeechRecognizer speechRecognizer;
         private boolean pendingAutoStart = false;
         private String pendingStartLang = "default";
         private AudioManager audio;
@@ -419,6 +434,22 @@ public class MainActivity extends Activity {
                     tts.setOnUtteranceProgressListener(new TtsListener(this));
                 } catch (Exception ignored) {}
             });
+        }
+
+        void destroy() {
+            if (tts != null) {
+                try {
+                    tts.stop();
+                    tts.shutdown();
+                } catch (Exception ignored) {}
+                tts = null;
+            }
+            if (speechRecognizer != null) {
+                try {
+                    speechRecognizer.destroy();
+                } catch (Exception ignored) {}
+                speechRecognizer = null;
+            }
         }
 
         private void applyFemaleVoice(Locale locale) {
@@ -482,7 +513,7 @@ public class MainActivity extends Activity {
                 if (!hasAudioPermission()) { pendingAutoStart = true; pendingStartLang = lang; requestAudioPermission(); return; }
                 pendingAutoStart = false;
                 ensureRecognizer();
-                if (recognizer == null) return;
+                if (speechRecognizer == null) return;
                 Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
                 intent.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, activity.getPackageName());
                 intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, locale.toLanguageTag());
@@ -493,17 +524,17 @@ public class MainActivity extends Activity {
                 intent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 2000L);
                 intent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 2000L);
                 intent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 1500L);
-                try { recognizer.startListening(intent); } catch (Exception ignored) {}
+                try { speechRecognizer.startListening(intent); } catch (Exception ignored) {}
             });
         }
 
         @JavascriptInterface
         public void stopListening() {
             activity.runOnUiThread(() -> {
-                if (recognizer != null) {
+                if (speechRecognizer != null) {
                     try {
-                        recognizer.cancel();
-                        recognizer.stopListening();
+                        speechRecognizer.cancel();
+                        speechRecognizer.stopListening();
                     } catch (Exception ignored) {}
                 }
             });
@@ -646,10 +677,10 @@ public class MainActivity extends Activity {
         }
 
         private void ensureRecognizer() {
-            if (recognizer != null) return;
+            if (speechRecognizer != null) return;
             try {
-                recognizer = SpeechRecognizer.createSpeechRecognizer(activity.getApplicationContext());
-                recognizer.setRecognitionListener(new VoiceRecognitionListener(this));
+                speechRecognizer = SpeechRecognizer.createSpeechRecognizer(activity.getApplicationContext());
+                speechRecognizer.setRecognitionListener(new VoiceRecognitionListener(this));
             } catch (Exception ignored) {}
         }
 
