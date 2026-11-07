@@ -39,7 +39,7 @@
             margin: 0;
             padding: 0;
             -webkit-tap-highlight-color: transparent;
-            font-family: 'JetBrainsMonoNL Nerd Font', 'JetBrains Mono NL', monospace;
+            font-family: 'JetBrainsMonoNL Nerd Font', 'JetBrains Mono NL', 'Noto Sans Gujarati', system-ui, -apple-system, sans-serif;
         }
 
         html, body {
@@ -50,7 +50,7 @@
             color: var(--text-primary);
         }
         input, textarea, button, select, .bubble-content, .message-input, .contact-name, .contact-status {
-            font-family: 'JetBrainsMonoNL Nerd Font', 'JetBrains Mono NL', monospace !important;
+            font-family: 'JetBrainsMonoNL Nerd Font', 'JetBrains Mono NL', 'Noto Sans Gujarati', system-ui, -apple-system, sans-serif !important;
         }
 
         #app {
@@ -1045,8 +1045,8 @@
             <div class="live-bar-top">
                 <span class="live-pulse-dot"></span>
                 <span class="live-timer" id="liveTimer">00:00</span>
-                <span id="liveStatus" style="display:none;"></span>
-                <span id="liveCaption" style="display:none;"></span>
+                <span class="live-status" id="liveStatus">Connecting…</span>
+                <span class="live-caption" id="liveCaption"></span>
             </div>
             <div class="live-actions">
                 <div class="live-action">
@@ -1055,9 +1055,8 @@
                     </button>
                     <span>Mute</span>
                 </div>
-                <div class="live-lang-toggle">
-                    <button class="lang-opt" data-lang="en-IN">English</button>
-                    <button class="lang-opt" data-lang="gu-IN">ગુજરાતી</button>
+                <div class="live-lang-toggle" style="display:none;">
+                    <button class="lang-opt active" data-lang="en-US">English</button>
                 </div>
                 <button class="live-end-call" id="liveEndCallBtn" title="End call">
                     <svg viewBox="0 0 24 24"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.68.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/></svg>
@@ -1089,7 +1088,7 @@
                     <input type="text" class="form-input" id="serverUrlInput" placeholder="http://192.168.6.87:8081" aria-label="Server Endpoint">
                     <div class="quick-chips">
                         <span class="chip" onclick="setServerUrl('http://192.168.6.87:8081')">LAN (192.168.6.87:8081)</span>
-                        <span class="chip" onclick="setServerUrl('http://100.121.227.65:8081')">Tailscale (100.121.227.65:8081)</span>
+                        <span class="chip" onclick="setServerUrl('http://10.0.2.2:8081')">Emulator Host (10.0.2.2:8081)</span>
                         <span class="chip" onclick="setServerUrl('http://127.0.0.1:8081')">USB/Reverse (127.0.0.1:8081)</span>
                     </div>
                 </div>
@@ -1121,18 +1120,11 @@
 
     <script>
         const DEFAULT_SERVER = "http://192.168.6.87:8081";
-        const DEFAULT_SYSTEM = "You are Vato, an AI assistant on WhatsApp with live internet access and rich markdown rendering.\n- Always reply in English by default. Only reply in Gujarati if the user speaks or asks in Gujarati.\n- Format responses using clean Markdown (headings, lists, code blocks, bold, tables).\n- When asked for photos, images, or visual references, search for direct image URLs (e.g. Wikimedia Commons, Wikipedia, direct JPG/PNG/WebP links) and embed them using markdown image syntax: ![description](image_url).\n- Keep replies direct, concise, and helpful like a WhatsApp message without fluff.";
+        const DEFAULT_SYSTEM = "You are Vato, an AI voice companion with a warm, lively, and positive British female persona (Sonia).\n- Always reply strictly in English with an upbeat, cheerful, and positive British conversational tone. Never speak in Gujarati or any other language.\n- Keep replies direct, concise, and punchy (1-3 sentences) suitable for a live voice call.\n- Format responses cleanly.";
 
         let serverUrl = localStorage.getItem("vato_server_url") || DEFAULT_SERVER;
-        if (serverUrl === "http://127.0.0.1:8080" || serverUrl === "http://127.0.0.1:8081") {
-            serverUrl = DEFAULT_SERVER;
-            localStorage.setItem("vato_server_url", DEFAULT_SERVER);
-        }
-        let systemPrompt = localStorage.getItem("vato_system_prompt") || DEFAULT_SYSTEM;
-        if (!systemPrompt || !systemPrompt.includes("Always reply in English by default")) {
-            systemPrompt = DEFAULT_SYSTEM;
-            localStorage.setItem("vato_system_prompt", DEFAULT_SYSTEM);
-        }
+        let systemPrompt = DEFAULT_SYSTEM;
+        localStorage.setItem("vato_system_prompt", DEFAULT_SYSTEM);
         let attachedImageBase64 = null;
         let attachedImageName = "";
         let chatMessages = [];
@@ -1226,16 +1218,7 @@
             if (!cleanText) return;
             activeSpeakingUtteranceId = utteranceId;
 
-            // If Gujarati is requested (via call toggle or Gujarati script)
-            const isGujarati = (lang && lang.startsWith("gu")) || /[\u0A80-\u0AFF]/.test(cleanText);
-            if (isGujarati) {
-                if (voiceBridge) {
-                    try { voiceBridge.speak(cleanText, "gu-IN", utteranceId); } catch(e) { stopSpeech(); }
-                }
-                return;
-            }
-
-            // English: Use English - United Kingdom - Sonia TTS (en-GB-SoniaNeural)
+            // Microsoft en-GB-Sonia Neural British Female voice
             const ttsUrl = serverUrl.replace(/\/+$/, '') + "/v1/audio/speech?text=" + encodeURIComponent(cleanText) + "&voice=en-GB-SoniaNeural";
             const audio = new Audio(ttsUrl);
             activeAudio = audio;
@@ -1892,6 +1875,16 @@
                 }, 3000);
             }
         });
+        window.__clearChat = function() {
+            clearTimeout(clearChatTimer);
+            if (clearChatBtn) clearChatBtn.dataset.confirming = "false";
+            chatMessages = [];
+            localStorage.removeItem("vato_chat_history");
+            loadChatHistory();
+        };
+        window.__getChatMessages = function() {
+            return chatMessages;
+        };
 
         // Settings Modal
         settingsBtn.addEventListener("click", () => {
@@ -1974,7 +1967,7 @@
                 return true;
             }
 
-            const fallbacks = ["http://192.168.6.87:8081", "http://127.0.0.1:8081"];
+            const fallbacks = ["http://127.0.0.1:8081", "http://10.0.2.2:8081", "http://192.168.6.87:8081", "http://192.168.6.159:8081"];
             for (const fb of fallbacks) {
                 if (fb !== serverUrl && await pingServer(fb)) {
                     serverUrl = fb;
@@ -2053,6 +2046,7 @@
         function setLivePhase(p) {
             livePhase = p;
             liveOverlay.dataset.phase = p;
+            console.log("VATO_CALL_PHASE:" + p);
             const gu = liveLang.startsWith("gu");
             liveStatus.textContent =
                 p === "listening" ? (gu ? "સાંભળી રહ્યું છે…" : "Listening…") :
@@ -2099,6 +2093,9 @@
             liveTimerInt = setInterval(() => { liveSeconds++; renderTimer(); }, 1000);
             liveCaption.innerHTML = "";
             stopSpeech();
+            liveLang = "en-US";
+            localStorage.setItem("vato_voice_lang", liveLang);
+            syncLiveLangUI();
             liveOverlay.classList.add("open");
             const callBtn = document.getElementById("liveTalkBtn");
             if (callBtn) callBtn.classList.add("active");
@@ -2106,6 +2103,17 @@
             if (voiceBridge && voiceBridge.setCallMode) voiceBridge.setCallMode(true);
             liveListen();
         }
+        window.__liveStart = liveStart;
+        window.__setLiveLang = function(lang) {
+            liveLang = lang;
+            localStorage.setItem("vato_voice_lang", liveLang);
+            syncLiveLangUI();
+            if (liveActive && livePhase !== "thinking") {
+                if (livePhase === "speaking") stopSpeech();
+                if (liveMuted) setLivePhase("muted"); else liveListen();
+            }
+        };
+        window.__stopSpeech = stopSpeech;
 
         window.__exitLiveTalk = function() {
             liveActive = false;
@@ -2193,8 +2201,11 @@
             return false;
         }
 
+        let liveLastPartialText = "";
         window.__onVoicePartial = function(t) {
             if (liveActive && livePhase === "listening") {
+                const clean = (t || "").trim();
+                if (clean) liveLastPartialText = clean;
                 if (isEndCallPhrase(t)) {
                     window.__exitLiveTalk();
                     return;
@@ -2205,7 +2216,12 @@
         };
 
         window.__onVoiceFinal = function(t, emo) {
-            if (!liveActive || livePhase !== "listening") return;
+            liveLastPartialText = "";
+            if (livePhase === "speaking") {
+                stopSpeech();
+            } else if (livePhase !== "listening") {
+                return;
+            }
             let text = (t || "").trim();
             if (!text && !emo) { liveListen(); return; }
             if (isEndCallPhrase(text)) {
@@ -2220,12 +2236,14 @@
             appendMessageUI(userMsg, true);
             saveChatHistory();
             liveCaption.innerHTML = '<span class="cap-user">' + renderEmotionBadges(text.replace(/</g, "&lt;")) + "</span>";
+            console.log("VATO_CALL_USER:" + JSON.stringify({text: text, emotion: emo, lang: liveLang}));
             setLivePhase("thinking");
             (async () => {
                 try {
                     const reply = await requestReply(chatMessages);
                     if (!liveActive || livePhase !== "thinking") return;
                     const botMsg = { role: "assistant", content: reply, time: formatTime(new Date()) };
+                    console.log("VATO_CALL_BOT:" + JSON.stringify({text: reply, lang: liveLang}));
                     chatMessages.push(botMsg);
                     appendMessageUI(botMsg, true);
                     saveChatHistory();
@@ -2243,15 +2261,20 @@
 
         window.__onVoiceError = function(code) {
             if (!liveActive || liveMuted) return;
-            // 6 = speech timeout (silence), 7 = no match -> debounce and keep listening
+            if (livePhase === "listening" && liveLastPartialText) {
+                const rescued = liveLastPartialText;
+                liveLastPartialText = "";
+                window.__onVoiceFinal(rescued);
+                return;
+            }
             if (code === 6 || code === 7) {
-                setTimeout(() => { if (liveActive && !liveMuted && livePhase === "listening") liveListen(); }, 200);
+                setTimeout(() => { if (liveActive && !liveMuted && livePhase === "listening") liveListen(); }, 1200);
                 return;
             }
             if (livePhase === "listening") {
                 const ai = liveCaption.querySelector(".cap-ai");
                 liveCaption.innerHTML = (ai ? ai.outerHTML : "") + '<span class="cap-ai">⚠️ ' + (liveLang.startsWith("gu") ? "ઓળખ થઈ નહીં" : "Didn't catch that") + "</span>";
-                setTimeout(() => { if (liveActive && !liveMuted) liveListen(); }, 250);
+                setTimeout(() => { if (liveActive && !liveMuted) liveListen(); }, 1200);
             }
         };
 

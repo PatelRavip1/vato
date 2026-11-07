@@ -179,6 +179,16 @@ public class MainActivity extends Activity {
         webView.loadUrl("file:///android_asset/index.html");
         setupMediaSession();
     }
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        if (intent != null && intent.hasExtra("eval_js")) {
+            String jsCode = intent.getStringExtra("eval_js");
+            if (webView != null && jsCode != null) {
+                runOnUiThread(() -> webView.evaluateJavascript(jsCode, null));
+            }
+        }
+    }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -485,35 +495,44 @@ public class MainActivity extends Activity {
         private void applyFemaleVoice(Locale locale) {
             if (tts == null) return;
             try {
-                tts.setLanguage(locale);
+                Locale uk = Locale.UK;
+                tts.setLanguage(uk);
                 Set<Voice> voices = tts.getVoices();
                 if (voices != null && !voices.isEmpty()) {
-                    String targetLang = locale.getLanguage().toLowerCase(Locale.ROOT);
                     Voice candidate = null;
                     for (Voice v : voices) {
                         Locale vLoc = v.getLocale();
-                        if (vLoc != null && targetLang.equals(vLoc.getLanguage().toLowerCase(Locale.ROOT))) {
+                        if (vLoc != null && "en".equalsIgnoreCase(vLoc.getLanguage()) && "gb".equalsIgnoreCase(vLoc.getCountry())) {
                             String name = v.getName().toLowerCase(Locale.ROOT);
-                            boolean isFemale = name.contains("guc") || name.contains("guf") || name.contains("ene") || name.contains("enc") || name.contains("end") || name.contains("cfl") || name.contains("female") || name.contains("girl") || name.contains("woman") || name.contains("-f-") || name.endsWith("-f");
+                            boolean isFemale = name.contains("female") || name.contains("girl") || name.contains("woman")
+                                || name.contains("gba") || name.contains("gbb") || name.contains("gbc") || name.contains("gbf")
+                                || name.contains("rjs") || name.contains("-f-") || name.endsWith("-f");
                             if (isFemale) {
-                                if (!v.isNetworkConnectionRequired()) {
+                                candidate = v;
+                                if (!v.isNetworkConnectionRequired()) break;
+                            } else if (candidate == null) {
+                                candidate = v;
+                            }
+                        }
+                    }
+                    if (candidate == null) {
+                        for (Voice v : voices) {
+                            Locale vLoc = v.getLocale();
+                            if (vLoc != null && "en".equalsIgnoreCase(vLoc.getLanguage())) {
+                                String name = v.getName().toLowerCase(Locale.ROOT);
+                                if (name.contains("female") || name.contains("-f-") || name.contains("ene") || name.contains("enc")) {
                                     candidate = v;
                                     break;
-                                } else if (candidate == null) {
-                                    candidate = v;
                                 }
                             }
                         }
                     }
                     if (candidate != null) {
                         tts.setVoice(candidate);
-                        Log.i("VatoTTS", "Selected female voice: " + candidate.getName());
-                    } else {
-                        Log.w("VatoTTS", "No female voice matched for " + targetLang);
+                        Log.i("VatoTTS", "Selected British female voice: " + candidate.getName());
                     }
                 }
-                // Positive, upbeat, friendly girl tone
-                tts.setPitch(1.22f);
+                tts.setPitch(1.15f);
                 tts.setSpeechRate(1.05f);
             } catch (Exception e) {
                 Log.e("VatoTTS", "applyFemaleVoice failed", e);
@@ -559,11 +578,7 @@ public class MainActivity extends Activity {
                     return;
                 }
                 pendingAutoStart = false;
-                if (targetUrl != null && !targetUrl.isEmpty()) {
-                    startSenseVoiceRecording(targetUrl, locale);
-                } else {
-                    startNativeSpeechRecognizer(locale);
-                }
+                startNativeSpeechRecognizer(locale);
             });
         }
 
@@ -572,14 +587,13 @@ public class MainActivity extends Activity {
             if (speechRecognizer == null) return;
             Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
             intent.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, activity.getPackageName());
-            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, locale.toLanguageTag());
-            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, locale.toLanguageTag());
+            boolean isEn = locale != null && "en".equalsIgnoreCase(locale.getLanguage());
+            String langTag = isEn ? "en-US" : (locale != null ? locale.toLanguageTag() : "en-US");
+            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, langTag);
+            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, langTag);
             intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
             intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
             intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-            intent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 2000L);
-            intent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 2000L);
-            intent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 1500L);
             try { speechRecognizer.startListening(intent); } catch (Exception ignored) {}
         }
 
@@ -801,9 +815,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void stopListening() {
             activity.runOnUiThread(() -> {
-                if (isRecording.get()) {
-                    isRecording.set(false);
-                }
+                stopSenseVoiceRecording();
                 if (speechRecognizer != null) {
                     try {
                         speechRecognizer.cancel();

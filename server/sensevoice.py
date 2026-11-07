@@ -94,6 +94,7 @@ class SenseVoiceRunner:
             model=m_path,
             tokens=t_path,
             num_threads=num_threads,
+            language="en",
             use_itn=True,
         )
 
